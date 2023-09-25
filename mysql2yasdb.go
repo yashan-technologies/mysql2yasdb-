@@ -1023,7 +1023,7 @@ func deal_schemas_ddl(mysqlDB *sql.DB, schemas, remapSchemas string, excludeTabl
 		define_str := "SET DEFINE OFF;\n"
 		_, err = table_file.WriteString(define_str)
 
-		msg_tab := "--创建数据库内的表,非空约束,列默认值,自增序列,列注释\n"
+		msg_tab := "--创建数据库内的表,列默认值,自增序列,列注释\n"
 		_, err = table_file.WriteString(msg_tab)
 
 		nullable_idx := "--创建表的非空约束语句\n"
@@ -1231,7 +1231,7 @@ func deal_tables_ddl(db *sql.DB, schema, yasdb_schema, tables string) {
 	define_str := "SET DEFINE OFF;\n"
 	_, err = table_file.WriteString(define_str)
 
-	msg_tab := "--先创建数据库内的表,非空约束,列默认值,自增序列,列注释\n"
+	msg_tab := "--先创建数据库内的表,列默认值,自增序列,列注释\n"
 	_, err = table_file.WriteString(msg_tab)
 	alltables := strings.Split(tables, ",")
 	for _, tableName := range alltables {
