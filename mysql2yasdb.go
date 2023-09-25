@@ -549,6 +549,8 @@ func get_table_ddl(db *sql.DB, table_schema, yasdb_schema, table_name string) ([
 		"mediumint unsigned": "integer",
 		"int unsigned":       "bigint",
 		"bigint unsigned":    "number",
+		// only support for yashandb 23.1
+		"geometry": "geometry",
 	}
 
 	// 遍历列信息结果
