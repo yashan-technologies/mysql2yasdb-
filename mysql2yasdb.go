@@ -21,6 +21,10 @@ import (
 var mysqlVersion, query string
 var parallel, parallel_per_table, commitSize int
 
+var (
+	version = "${version}"
+)
+
 func ConnectYasdb(dsn string) *sql.DB {
 	db, err := sql.Open("yasdb", dsn)
 	if err != nil {
@@ -910,7 +914,7 @@ func printHelp() {
 }
 
 func printVersion() {
-	fmt.Println("版本号:1.6.1")
+	fmt.Printf("版本号: %s\n", string(version))
 }
 
 type schema_table struct {
