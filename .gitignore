@@ -1,0 +1,5 @@
+.vscode
+build
+jira
+mysql2yasdb
+*.sql

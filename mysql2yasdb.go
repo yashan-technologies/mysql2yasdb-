@@ -21,6 +21,10 @@ import (
 var mysqlVersion, query string
 var parallel, parallel_per_table, commitSize int
 
+var (
+	version = "${version}"
+)
+
 func ConnectYasdb(dsn string) *sql.DB {
 	db, err := sql.Open("yasdb", dsn)
 	if err != nil {
@@ -523,7 +527,7 @@ func get_table_ddl(db *sql.DB, table_schema, yasdb_schema, table_name string) ([
 		"double":             "double",
 		"bit":                "bit",
 		"date":               "date",
-		"datetime":           "date",
+		"datetime":           "timestamp",
 		"timestamp":          "timestamp",
 		"time":               "time",
 		"year":               "date",
@@ -549,6 +553,8 @@ func get_table_ddl(db *sql.DB, table_schema, yasdb_schema, table_name string) ([
 		"mediumint unsigned": "integer",
 		"int unsigned":       "bigint",
 		"bigint unsigned":    "number",
+		// only support for yashandb 23.1
+		"geometry": "geometry",
 	}
 
 	// 遍历列信息结果
@@ -908,7 +914,7 @@ func printHelp() {
 }
 
 func printVersion() {
-	fmt.Println("版本号:1.6.1")
+	fmt.Printf("版本号: %s\n", string(version))
 }
 
 type schema_table struct {
@@ -1023,7 +1029,7 @@ func deal_schemas_ddl(mysqlDB *sql.DB, schemas, remapSchemas string, excludeTabl
 		define_str := "SET DEFINE OFF;\n"
 		_, err = table_file.WriteString(define_str)
 
-		msg_tab := "--创建数据库内的表,非空约束,列默认值,自增序列,列注释\n"
+		msg_tab := "--创建数据库内的表,列默认值,自增序列,列注释\n"
 		_, err = table_file.WriteString(msg_tab)
 
 		nullable_idx := "--创建表的非空约束语句\n"
@@ -1231,7 +1237,7 @@ func deal_tables_ddl(db *sql.DB, schema, yasdb_schema, tables string) {
 	define_str := "SET DEFINE OFF;\n"
 	_, err = table_file.WriteString(define_str)
 
-	msg_tab := "--先创建数据库内的表,非空约束,列默认值,自增序列,列注释\n"
+	msg_tab := "--先创建数据库内的表,列默认值,自增序列,列注释\n"
 	_, err = table_file.WriteString(msg_tab)
 	alltables := strings.Split(tables, ",")
 	for _, tableName := range alltables {
@@ -1486,7 +1492,14 @@ func getYasdbColums(yasdb *sql.DB, yasdbSchema, yasdbTable string) ([]ColumnInfo
 	var yasdbColumnName string
 	var yasdbColumnType string
 	// 查询目标表结构
-	yasdbSql := fmt.Sprintf("select DATA_TYPE,COLUMN_NAME from all_tab_columns where owner=upper('%s') and TABLE_NAME=upper('%s') order by COLUMN_ID", yasdbSchema, yasdbTable)
+	// 处理用户是小写的情况 (create user "test" itentified bu xxx)
+	if isWarpByQuote(yasdbSchema) {
+		yasdbSchema = unWarpQuote(yasdbSchema)
+	} else {
+		yasdbSchema = strings.ToUpper(yasdbSchema)
+	}
+	yasdbTable = strings.ToUpper(yasdbTable)
+	yasdbSql := fmt.Sprintf("select DATA_TYPE,COLUMN_NAME from all_tab_columns where owner='%s' and TABLE_NAME='%s' order by COLUMN_ID", yasdbSchema, yasdbTable)
 	yasdbRows, err := yasdb.Query(yasdbSql)
 	if err != nil {
 		fmt.Println("查询目标结构时发生错误:", err)
@@ -1518,6 +1531,17 @@ func uint8SliceToInt(slice []uint8) int {
 		result = result*256 + int(val)
 	}
 	return result
+}
+
+func isWarpByQuote(s string) bool {
+	return len(s) > 2 && s[0] == '"' && s[len(s)-1] == '"'
+}
+
+func unWarpQuote(s string) string {
+	if isWarpByQuote(s) {
+		return strings.ReplaceAll(s, `"`, "")
+	}
+	return s
 }
 
 // 将值转换为YashanDB类型

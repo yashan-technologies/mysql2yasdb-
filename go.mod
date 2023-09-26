@@ -1,4 +1,4 @@
-module main
+module m2y
 
 go 1.19
 

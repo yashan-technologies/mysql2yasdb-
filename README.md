@@ -20,7 +20,7 @@
 ### 2、设置环境变量
 
 ```shell
-export MYSQL2YASDB_HOME=/xx/yy/mysql2yasdb  ----工具包mysql2yasdb-x.x.x.zip解压后的根目录mysql2yasdb，根据部署环境提供真实路径
+export MYSQL2YASDB_HOME=/xx/yy/mysql2yasdb  ----工具包mysql2yasdb-xxxx-linux-x86_64.tar.gz解压后的根目录mysql2yasdb-xxxx，根据部署环境提供真实路径
 export PATH=$PATH:$MYSQL2YASDB_HOME
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$MYSQL2YASDB_HOME/lib ${MYSQL2YASDB_HOME}为工具包解压后的根目录
 ```
@@ -75,6 +75,7 @@ host=192.168.3.180                      #YahsanDB主机IP地址
 port=1688                               #YashanDB访问端口
 username=yashan                         #YashanDB访问用户名，按表导入时，导入到此用户下
 password=yashan123                      #YashanDB访问用户密码
-remap_schemas=yashan,yashan,yashan      #迁移至YashanDB的目标用户名称，当和参数schemas一起配置时，它的值需要和参数schemas的值一一对应，schemas第N个值对应到remap_schemas第N个值。当和tables一起配置时，只取remap_schemas的第一个值。
+remap_schemas=yashan,yashan,yashan      #迁移至YashanDB的目标用户名称，当和参数schemas一起配置时，它的值需要和参数schemas的值一一对应，schemas第N个值对应到remap_schemas第N个值。当和tables一起配置时，只取remap_schemas的第一个值, 当想要将yashandb用户定义为小写的时候需要时用反引号包裹, e.g:`"user1","user2"`
+
 
 ```
