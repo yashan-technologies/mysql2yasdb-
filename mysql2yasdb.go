@@ -523,7 +523,7 @@ func get_table_ddl(db *sql.DB, table_schema, yasdb_schema, table_name string) ([
 		"double":             "double",
 		"bit":                "bit",
 		"date":               "date",
-		"datetime":           "date",
+		"datetime":           "timestamp",
 		"timestamp":          "timestamp",
 		"time":               "time",
 		"year":               "date",
@@ -1488,7 +1488,14 @@ func getYasdbColums(yasdb *sql.DB, yasdbSchema, yasdbTable string) ([]ColumnInfo
 	var yasdbColumnName string
 	var yasdbColumnType string
 	// 查询目标表结构
-	yasdbSql := fmt.Sprintf("select DATA_TYPE,COLUMN_NAME from all_tab_columns where owner=upper('%s') and TABLE_NAME=upper('%s') order by COLUMN_ID", yasdbSchema, yasdbTable)
+	// 处理用户是小写的情况 (create user "test" itentified bu xxx)
+	if isWarpByQuote(yasdbSchema) {
+		yasdbSchema = unWarpQuote(yasdbSchema)
+	} else {
+		yasdbSchema = strings.ToUpper(yasdbSchema)
+	}
+	yasdbTable = strings.ToUpper(yasdbTable)
+	yasdbSql := fmt.Sprintf("select DATA_TYPE,COLUMN_NAME from all_tab_columns where owner='%s' and TABLE_NAME='%s' order by COLUMN_ID", yasdbSchema, yasdbTable)
 	yasdbRows, err := yasdb.Query(yasdbSql)
 	if err != nil {
 		fmt.Println("查询目标结构时发生错误:", err)
@@ -1520,6 +1527,17 @@ func uint8SliceToInt(slice []uint8) int {
 		result = result*256 + int(val)
 	}
 	return result
+}
+
+func isWarpByQuote(s string) bool {
+	return len(s) > 2 && s[0] == '"' && s[len(s)-1] == '"'
+}
+
+func unWarpQuote(s string) string {
+	if isWarpByQuote(s) {
+		return strings.ReplaceAll(s, `"`, "")
+	}
+	return s
 }
 
 // 将值转换为YashanDB类型
