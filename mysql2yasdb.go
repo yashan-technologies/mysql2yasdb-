@@ -1317,21 +1317,38 @@ type ColumnInfo struct {
 	ColumnType string
 }
 
+type queryFunc func(string) string
+
+func withLimit(limit, offset int) queryFunc {
+	return func(s string) string {
+		return s + fmt.Sprintf("limit %d offset %d", limit, offset)
+	}
+}
+
+func mysqlCount(mysdb *sql.DB, schema, table string, opts ...queryFunc) (count int, err error) {
+	sql := fmt.Sprintf("SELECT COUNT(*) FROM %s.%s ", schema, table)
+	for _, opt := range opts {
+		sql = opt(sql)
+	}
+	if query != "" {
+		sql = sql + query
+	}
+	err = mysdb.QueryRow(sql).Scan(&count)
+	if err != nil {
+		return
+	}
+	return
+}
+
 func sync_table_date_from_mysql_to_yasdb(mysdb, yasdDb *sql.DB, mysqlSchema, yasdbSchema, mysqlTable, yasdbTable string) {
 	//处理总行数
 	var totalCount int
 	// 查询总记录数
-	var count int
-	sql := fmt.Sprintf("SELECT COUNT(*) FROM %s.%s ", mysqlSchema, mysqlTable)
-	if query != "" {
-		sql = sql + query
-	}
-	err := mysdb.QueryRow(sql).Scan(&count)
+	count, err := mysqlCount(mysdb, mysqlSchema, mysqlTable)
 	if err != nil {
-		fmt.Println("Failed to query total count:", err)
+		log.Printf("mysql %s.%s count err: %s", mysqlSchema, mysqlTable, err.Error())
 		return
 	}
-
 	yasdbColumns, err := getYasdbColums(yasdDb, yasdbSchema, yasdbTable)
 	if err != nil {
 		str := fmt.Sprintf("%s", err)
@@ -1361,7 +1378,7 @@ func sync_table_date_from_mysql_to_yasdb(mysdb, yasdDb *sql.DB, mysqlSchema, yas
 	// 创建一个等待组，用于等待所有goroutine完成
 	var wg sync.WaitGroup
 
-	for i := 0; i <= parallel_this_table; i++ {
+	for i := 0; i < parallel_this_table; i++ {
 
 		wg.Add(1)
 
@@ -1388,7 +1405,15 @@ func sync_table_date_from_mysql_to_yasdb(mysdb, yasdDb *sql.DB, mysqlSchema, yas
 }
 
 func sync_from_mysql_to_yasdb_ol(mysdb, yasdb *sql.DB, mysqlSchema, yasdbSchema, mysqlTable, yasdbTable string, yasdbColumns []ColumnInfo, limit, offset int) int {
-
+	count, err := mysqlCount(mysdb, mysqlSchema, mysqlTable, withLimit(limit, offset))
+	if err != nil {
+		log.Printf("mysql %s.%s limit: %d offset: %d count err: %s", mysqlSchema, mysqlTable, limit, offset, err.Error())
+		return 0
+	}
+	if count == 0 {
+		log.Printf("mysql %s.%s limit: %d offset: %d no data ,skip sync", mysqlSchema, mysqlTable, limit, offset)
+		return 0
+	}
 	var resultCount int
 	var batchCount int
 	// 开始事务
