@@ -1,0 +1,20 @@
+[mysql]
+host="192.168.3.180"
+port=3306
+database="test"    
+username="yashan"
+password="yashan123"
+tables=["test_key_word"]
+#schemas=["db1","db2"]
+#exclude_tables=["tbl_audit_template_point","tbl_audit_template"]
+#parallel=1
+#parallel_per_table=1
+#batchSize=1000
+#query="where create_date < '2022-01-11 00:00:00'"
+
+[yashandb]
+host="192.168.3.180"
+port=1688
+username="yashan"
+password="yashan123"
+remap_schemas=["yashan","yashan"]

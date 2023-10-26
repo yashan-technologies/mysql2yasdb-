@@ -42,13 +42,13 @@ libzstd.so.1
 -v, --version  显示程序版本号
 -c, --config   指定DB配置信息文件
 -d, --data     仅同步表数据,此参数开启时,不生成ddl文件
-●用法示例1:     直接执行,使用当前目录下的db.ini配置文件获取程序运行时的配置信息,导出对象ddl
+●用法示例1:     直接执行,使用当前目录下的db.ini配置文件获取程序运行时的配置信息,导出对象ddl,ddl导出文件分被位于tables_ddl,others_ddl
 ./mysql2yasdb 
 
 ●用法示例2:     使用自定义配置文件xxx.ini,导出对象ddl
-./mysql2yasdb -c xxx.ini   或 ./mysql2yasdb --config=xxx.ini
+./mysql2yasdb -c xxx.toml   或 ./mysql2yasdb --config=xxx.toml
 
-●用法示例3:     使用当前目录下的db.ini配置文件,并进行表数据的同步,但不生成ddl文件
+●用法示例3:     使用当前目录下的db.toml配置文件,并进行表数据的同步,但不生成ddl文件
 ./mysql2yasdb -d
 ```
 
@@ -56,26 +56,26 @@ libzstd.so.1
 
 ```ini
 [mysql]
-host=192.168.3.180                      #mysql主机IP地址
-port=3306                               #mysql访问端口
-database=test                           #默认访问的database，当按tables导出时,导出此database下面的表
-username=yashan                         #mysql访问用户名，需授予information_schema下相关系统表访问权限
-password=yashan123                      #mysql访问用户密码
+host="192.168.3.180"                        #mysql主机IP地址
+port=3306                                   #mysql访问端口
+database="test"                             #默认访问的database，当按tables导出时,导出此database下面的表
+username="yashan"                           #mysql访问用户名，需授予information_schema下相关系统表访问权限
+password="yashan123"                        #mysql访问用户密码
 
-#tables=table1,table2                   #需迁移的mysql表名称，和参数schemas不能同时配置
-schemas=db1,db2,db3                     #需迁移的databases的名称，和参数tables不能同时配置
-#exclude_tables=table3,table4           #迁移过程中需排除的表名称，schemas配置多个时，多个schemas下面的此名称的表都不导出/数据同步
-#parallel=1                             #并发度，值为N时表示同时并发迁移N个表，表较多时建议加大此参数可以提升速度,默认值1，取值范围[1-8]
-#parallel_per_table=1                   #表内并行度，值为N时表示同一张表开启N个并行同步数据，表较大时建议加大此参数可以提升,默认值1，取值范围[1-8]
-#batchSize=1000                         #批次大小，值为N时表示一次事务处理N行数据，默认值1000
-#query=where create_date < '2022-01-11 00:00:00'  #设置查询条件,会对所有要同步的表都加上此条件
+#tables=["table1","table2"]                 #需迁移的mysql表名称，和参数schemas不能同时配置
+schemas=["db1","db2","db3"]                 #需迁移的databases的名称，和参数tables不能同时配置
+#exclude_tables=table3,table4               #迁移过程中需排除的表名称，schemas配置多个时，多个schemas下面的此名称的表都不导出/数据同步
+#parallel=1                                 #并发度，值为N时表示同时并发迁移N个表，表较多时建议加大此参数可以提升速度,默认值1，取值范围[1-8]
+#parallel_per_table=1                       #表内并行度，值为N时表示同一张表开启N个并行同步数据，表较大时建议加大此参数可以提升,默认值1，取值范围[1-8]
+#batchSize=1000                             #批次大小，值为N时表示一次事务处理N行数据，默认值1000
+#query="where create_date < '2022-01-11 00:00:00'"  #设置查询条件,会对所有要同步的表都加上此条件
 
 [yashandb]
-host=192.168.3.180                      #YahsanDB主机IP地址
-port=1688                               #YashanDB访问端口
-username=yashan                         #YashanDB访问用户名，按表导入时，导入到此用户下
-password=yashan123                      #YashanDB访问用户密码
-remap_schemas=yashan,yashan,yashan      #迁移至YashanDB的目标用户名称，当和参数schemas一起配置时，它的值需要和参数schemas的值一一对应，schemas第N个值对应到remap_schemas第N个值。当和tables一起配置时，只取remap_schemas的第一个值, 当想要将yashandb用户定义为小写的时候需要时用反引号包裹, e.g:`"user1","user2"`
+host="192.168.3.180"                        #YahsanDB主机IP地址
+port=1688                                   #YashanDB访问端口
+username="yashan"                           #YashanDB访问用户名，按表导入时，导入到此用户下
+password="yashan123"                        #YashanDB访问用户密码
+remap_schemas=["yashan","yashan","yashan"]  #迁移至YashanDB的目标用户名称，当和参数schemas一起配置时，它的值需要和参数schemas的值一一对应，schemas第N个值对应到remap_schemas第N个值。当和tables一起配置时，只取remap_schemas的第一个值, 当想要将yashandb用户定义为小写的时候需要时用反引号包裹, e.g:`"user1","user2"`
 
 
 ```
