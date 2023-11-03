@@ -945,7 +945,14 @@ func deal_schemas_data(mysqlDb, yasdDb *sql.DB, table_schemas, table_remap_schem
 
 func deal_schemas_ddl(mysqlDB *sql.DB, table_schemas, table_remap_schemas []string, excludeTables []string) {
 	// 查询表的信息
-
+	if err := fs.Mkdir(tables_ddl); err != nil {
+		log.ConsoleSugar.Errorf("mkdir tables err: %s", err.Error())
+		return
+	}
+	if err := fs.Mkdir(others_ddl); err != nil {
+		log.ConsoleSugar.Errorf("mkdir tables err: %s", err.Error())
+		return
+	}
 	mysqDbs := getMysqlAllDbs(mysqlDB)
 
 	for i, schema := range table_schemas {
@@ -958,8 +965,8 @@ func deal_schemas_ddl(mysqlDB *sql.DB, table_schemas, table_remap_schemas []stri
 		yasdb_schema := table_remap_schemas[i]
 
 		// data := "Hello, World!"
-		tab_filename := fmt.Sprintf("%s_tables.sql", schema)
-		idx_filename := fmt.Sprintf("%s_others.sql", schema)
+		tab_filename := path.Join(tables_ddl, fmt.Sprintf("%s_tables.sql", schema))
+		idx_filename := path.Join(others_ddl, fmt.Sprintf("%s_others.sql", schema))
 
 		table_file, err := os.Create(tab_filename)
 		if err != nil {
@@ -1603,7 +1610,9 @@ func getMysqlAllDbs(mysqlDB *sql.DB) []string {
 }
 
 func initApp(config string) error {
-	confdef.InitConfig(config)
+	if err := confdef.InitConfig(config); err != nil {
+		return err
+	}
 	db.LoadMysqlDB(confdef.GetM2yConfig().Mysql)
 	db.LoadYashanDB(confdef.GetM2yConfig().Yashan)
 	log.InitLog()
