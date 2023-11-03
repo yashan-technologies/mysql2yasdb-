@@ -2,36 +2,34 @@ package main
 
 import (
 	"database/sql"
+	"encoding/json"
 	"flag"
 	"fmt"
-	"log"
+	"m2y/db"
+	"m2y/define/confdef"
+	"m2y/define/sqldef"
+	"m2y/define/typedef"
+	"m2y/log"
 	"os"
-	"strconv"
+	"path"
 	"strings"
 	"sync"
 	"time"
 
 	_ "git.yasdb.com/go/yasdb-go"
+	"git.yasdb.com/go/yasutil/fs"
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/godror/godror"
-
-	"gopkg.in/ini.v1"
 )
 
-var mysqlVersion, query string
-var parallel, parallel_per_table, commitSize int
+const (
+	tables_ddl = "tables_ddl"
+	others_ddl = "others_ddl"
+)
 
 var (
 	version = "${version}"
 )
-
-func ConnectYasdb(dsn string) *sql.DB {
-	db, err := sql.Open("yasdb", dsn)
-	if err != nil {
-		fmt.Println("连接yashandb时出错", err)
-	}
-	return db
-}
 
 type Index struct {
 	Table      string
@@ -42,18 +40,18 @@ type Index struct {
 	SeqInIndex int
 }
 
-func get_non_uniq_index_ddl(db *sql.DB, table_schema, yasdb_schema, table_name string) ([]string, error) {
+func get_non_uniq_index_ddl(mysqlDB *sql.DB, table_schema, yasdb_schema, table_name string) ([]string, error) {
 	var nonuniqindexes []string
 	sql_str := fmt.Sprintf("SHOW INDEXES FROM %s.`%s`", table_schema, table_name)
 	// 执行SHOW INDEXES查询
-	rows, err := db.Query(sql_str)
+	rows, err := mysqlDB.Query(sql_str)
 	if err != nil {
-		fmt.Println("查询索引属性SHOW INDEXES FROM xx.xx出错", err)
+		log.ConsoleSugar.Errorf("查询索引属性SHOW INDEXES FROM xx.xx出错", err)
 		return nil, err
 	}
 	defer rows.Close()
 
-	if mysqlVersion == "8" {
+	if db.MysqlVersion == "8" {
 		var (
 			table         string
 			nonUnique     int
@@ -78,7 +76,7 @@ func get_non_uniq_index_ddl(db *sql.DB, table_schema, yasdb_schema, table_name s
 		for rows.Next() {
 			err = rows.Scan(&table, &nonUnique, &keyName, &seqInIndex, &columnName, &Collation, &Cardinality, &Sub_part, &Packed, &indexType, &Null, &Comment, &Index_comment, &Visible, &Expression)
 			if err != nil {
-				fmt.Println("查询索引属性SHOW INDEXES FROM xx.xx出错", err)
+				log.ConsoleSugar.Errorf("查询索引属性SHOW INDEXES FROM xx.xx出错 %v", err)
 				return nil, err
 			}
 
@@ -96,7 +94,7 @@ func get_non_uniq_index_ddl(db *sql.DB, table_schema, yasdb_schema, table_name s
 			//indexes = append(indexes, index)
 		}
 		if err = rows.Err(); err != nil {
-			fmt.Println("查询索引属性SHOW INDEXES FROM xx.xx出错", err)
+			log.ConsoleSugar.Errorf("查询索引属性SHOW INDEXES FROM xx.xx出错 %v", err)
 			return nil, err
 		}
 
@@ -121,7 +119,7 @@ func get_non_uniq_index_ddl(db *sql.DB, table_schema, yasdb_schema, table_name s
 			return nil, err
 		}
 
-	} else if mysqlVersion == "5" {
+	} else if db.MysqlVersion == "5" {
 		var (
 			table         string
 			nonUnique     int
@@ -144,7 +142,7 @@ func get_non_uniq_index_ddl(db *sql.DB, table_schema, yasdb_schema, table_name s
 		for rows.Next() {
 			err = rows.Scan(&table, &nonUnique, &keyName, &seqInIndex, &columnName, &Collation, &Cardinality, &Sub_part, &Packed, &indexType, &Null, &Comment, &Index_comment)
 			if err != nil {
-				fmt.Println("查询索引属性SHOW INDEXES FROM xx.xx出错", err)
+				log.ConsoleSugar.Errorf("查询索引属性SHOW INDEXES FROM xx.xx出错 %v", err)
 				return nil, err
 			}
 
@@ -162,7 +160,7 @@ func get_non_uniq_index_ddl(db *sql.DB, table_schema, yasdb_schema, table_name s
 			//indexes = append(indexes, index)
 		}
 		if err = rows.Err(); err != nil {
-			fmt.Println("查询索引属性SHOW INDEXES FROM xx.xx出错", err)
+			log.ConsoleSugar.Errorf("查询索引属性SHOW INDEXES FROM xx.xx出错 %v", err)
 			return nil, err
 		}
 
@@ -188,20 +186,20 @@ func get_non_uniq_index_ddl(db *sql.DB, table_schema, yasdb_schema, table_name s
 	return nonuniqindexes, nil
 }
 
-func get_uniq_index_ddl(db *sql.DB, table_schema, yasdb_schema, table_name string) ([]string, error) {
+func get_uniq_index_ddl(mysqlDB *sql.DB, table_schema, yasdb_schema, table_name string) ([]string, error) {
 	var uniqindexes []string
 	// 连接到MySQL数据库
 
 	sql_str := fmt.Sprintf("SHOW INDEXES FROM %s.`%s`", table_schema, table_name)
 	// 执行SHOW INDEXES查询
-	rows, err := db.Query(sql_str)
+	rows, err := mysqlDB.Query(sql_str)
 	if err != nil {
-		fmt.Println("查询索引属性SHOW INDEXES FROM xx.xx出错", err)
+		log.ConsoleSugar.Errorf("查询索引属性SHOW INDEXES FROM xx.xx出错: %s", err)
 		return nil, err
 	}
 	defer rows.Close()
 
-	if mysqlVersion == "8" {
+	if db.MysqlVersion == "8" {
 		var (
 			table         string
 			nonUnique     int
@@ -226,7 +224,7 @@ func get_uniq_index_ddl(db *sql.DB, table_schema, yasdb_schema, table_name strin
 		for rows.Next() {
 			err = rows.Scan(&table, &nonUnique, &keyName, &seqInIndex, &columnName, &Collation, &Cardinality, &Sub_part, &Packed, &indexType, &Null, &Comment, &Index_comment, &Visible, &Expression)
 			if err != nil {
-				fmt.Println("查询索引属性SHOW INDEXES FROM xx.xx出错", err)
+				log.ConsoleSugar.Errorf("查询索引属性SHOW INDEXES FROM xx.xx出错: %s", err)
 				return nil, err
 			}
 
@@ -245,7 +243,7 @@ func get_uniq_index_ddl(db *sql.DB, table_schema, yasdb_schema, table_name strin
 		}
 
 		if err = rows.Err(); err != nil {
-			fmt.Println("查询索引属性SHOW INDEXES FROM xx.xx出错", err)
+			log.ConsoleSugar.Errorf("查询索引属性SHOW INDEXES FROM xx.xx出错: %s", err)
 			return nil, err
 		}
 
@@ -272,7 +270,7 @@ func get_uniq_index_ddl(db *sql.DB, table_schema, yasdb_schema, table_name strin
 		if err = rows.Err(); err != nil {
 			return nil, err
 		}
-	} else if mysqlVersion == "5" {
+	} else if db.MysqlVersion == "5" {
 		var (
 			table         string
 			nonUnique     int
@@ -295,7 +293,7 @@ func get_uniq_index_ddl(db *sql.DB, table_schema, yasdb_schema, table_name strin
 		for rows.Next() {
 			err = rows.Scan(&table, &nonUnique, &keyName, &seqInIndex, &columnName, &Collation, &Cardinality, &Sub_part, &Packed, &indexType, &Null, &Comment, &Index_comment)
 			if err != nil {
-				fmt.Println("查询索引属性SHOW INDEXES FROM xx.xx出错", err)
+				log.ConsoleSugar.Errorf("查询索引属性SHOW INDEXES FROM xx.xx出错: %v", err)
 				return nil, err
 			}
 
@@ -314,7 +312,7 @@ func get_uniq_index_ddl(db *sql.DB, table_schema, yasdb_schema, table_name strin
 		}
 
 		if err = rows.Err(); err != nil {
-			fmt.Println("查询索引属性SHOW INDEXES FROM xx.xx出错", err)
+			log.ConsoleSugar.Errorf("查询索引属性SHOW INDEXES FROM xx.xx出错: %v", err)
 			return nil, err
 		}
 
@@ -346,18 +344,18 @@ func get_uniq_index_ddl(db *sql.DB, table_schema, yasdb_schema, table_name strin
 	return uniqindexes, nil
 }
 
-func get_primary_key_ddl(db *sql.DB, table_schema, yasdb_schema, table_name string) ([]string, error) {
+func get_primary_key_ddl(mysqlDB *sql.DB, table_schema, yasdb_schema, table_name string) ([]string, error) {
 	var primarykeys []string
 
 	// 执行SHOW INDEXES查询
 	sql_str := fmt.Sprintf("SHOW INDEXES FROM %s.`%s`", table_schema, table_name)
-	rows, err := db.Query(sql_str)
+	rows, err := mysqlDB.Query(sql_str)
 	if err != nil {
-		fmt.Println("查询索引属性SHOW INDEXES FROM xx.xx出错", err)
+		log.ConsoleSugar.Errorf("查询索引属性SHOW INDEXES FROM xx.xx出错: %v", err)
 		return nil, err
 	}
 	defer rows.Close()
-	if mysqlVersion == "8" {
+	if db.MysqlVersion == "8" {
 
 		var (
 			table         string
@@ -383,7 +381,7 @@ func get_primary_key_ddl(db *sql.DB, table_schema, yasdb_schema, table_name stri
 		for rows.Next() {
 			err = rows.Scan(&table, &nonUnique, &keyName, &seqInIndex, &columnName, &Collation, &Cardinality, &Sub_part, &Packed, &indexType, &Null, &Comment, &Index_comment, &Visible, &Expression)
 			if err != nil {
-				fmt.Println("查询索引属性SHOW INDEXES FROM xx.xx出错", err)
+				log.ConsoleSugar.Errorf("查询索引属性SHOW INDEXES FROM xx.xx出错: %s", err)
 				return nil, err
 			}
 
@@ -402,7 +400,7 @@ func get_primary_key_ddl(db *sql.DB, table_schema, yasdb_schema, table_name stri
 		}
 
 		if err = rows.Err(); err != nil {
-			fmt.Println("查询索引属性SHOW INDEXES FROM xx.xx出错", err)
+			log.ConsoleSugar.Errorf("查询索引属性SHOW INDEXES FROM xx.xx出错: %v", err)
 			return nil, err
 		}
 
@@ -424,7 +422,7 @@ func get_primary_key_ddl(db *sql.DB, table_schema, yasdb_schema, table_name stri
 			return nil, err
 		}
 
-	} else if mysqlVersion == "5" {
+	} else if db.MysqlVersion == "5" {
 
 		var (
 			table         string
@@ -448,7 +446,7 @@ func get_primary_key_ddl(db *sql.DB, table_schema, yasdb_schema, table_name stri
 		for rows.Next() {
 			err = rows.Scan(&table, &nonUnique, &keyName, &seqInIndex, &columnName, &Collation, &Cardinality, &Sub_part, &Packed, &indexType, &Null, &Comment, &Index_comment)
 			if err != nil {
-				fmt.Println("查询索引属性SHOW INDEXES FROM xx.xx出错", err)
+				log.ConsoleSugar.Errorf("查询索引属性SHOW INDEXES FROM xx.xx出错: %v", err)
 				return nil, err
 			}
 
@@ -467,7 +465,7 @@ func get_primary_key_ddl(db *sql.DB, table_schema, yasdb_schema, table_name stri
 		}
 
 		if err = rows.Err(); err != nil {
-			fmt.Println("查询索引属性SHOW INDEXES FROM xx.xx出错", err)
+			log.ConsoleSugar.Errorf("查询索引属性SHOW INDEXES FROM xx.xx出错: %v", err)
 			return nil, err
 		}
 
@@ -494,18 +492,12 @@ func get_primary_key_ddl(db *sql.DB, table_schema, yasdb_schema, table_name stri
 	return primarykeys, nil
 }
 
-func get_table_ddl(db *sql.DB, table_schema, yasdb_schema, table_name string) ([]string, []string, error) {
+func get_table_ddl(mysqlDB *sql.DB, table_schema, yasdb_schema, table_name string) ([]string, []string, error) {
 	var tableddls, nullable_strs []string
 	// 查询表的列信息
-	columns, err := db.Query(`
-	SELECT table_name, column_name, data_type, character_maximum_length, numeric_precision, numeric_scale, column_comment,
-	substring(column_type,instr(column_type,'(')+1,instr(column_type,')')-instr(column_type,'(')-1) as column_type_length,
-	is_nullable,ifnull(column_default,"")
-	FROM information_schema.columns
-	WHERE table_schema = ? 
-	and table_name = ? order by  ORDINAL_POSITION`, table_schema, table_name)
+	columns, err := mysqlDB.Query(sqldef.SQL_QUERY_MYSQL_COLUMNS, table_schema, table_name)
 	if err != nil {
-		fmt.Println("查询表属性,information_schema.columns出错", err)
+		log.ConsoleSugar.Errorf("查询表属性,information_schema.columns出错: %s", err.Error())
 		return nil, nil, err
 	}
 	defer columns.Close()
@@ -515,130 +507,73 @@ func get_table_ddl(db *sql.DB, table_schema, yasdb_schema, table_name string) ([
 	// 存储列注释信息
 	columnComments := make(map[string]string)
 
-	// 数据类型映射关系
-	dataTypeMap := map[string]string{
-		"tinyint":            "smallint",
-		"smallint":           "integer",
-		"mediumint":          "integer",
-		"int":                "bigint",
-		"bigint":             "number",
-		"decimal":            "number",
-		"float":              "float",
-		"double":             "double",
-		"bit":                "bit",
-		"date":               "date",
-		"datetime":           "timestamp",
-		"timestamp":          "timestamp",
-		"time":               "time",
-		"year":               "date",
-		"char":               "char",
-		"varchar":            "varchar",
-		"nchar":              "nchar",
-		"nvarchar":           "nvarchar",
-		"binary":             "raw",
-		"varbinary":          "raw",
-		"tinyblob":           "blob",
-		"tinytext":           "clob",
-		"blob":               "blob",
-		"text":               "clob",
-		"mediumblob":         "blob",
-		"mediumtext":         "clob",
-		"longblob":           "blob",
-		"longtext":           "clob",
-		"json":               "json",
-		"enum":               "varchar",
-		"set":                "varchar",
-		"tinyint unsigned":   "smallint",
-		"smallint unsigned":  "integer",
-		"mediumint unsigned": "integer",
-		"int unsigned":       "bigint",
-		"bigint unsigned":    "number",
-		// only support for yashandb 23.1
-		"geometry": "geometry",
-	}
-
 	// 遍历列信息结果
 	for columns.Next() {
-		var tableName, columnName, dataType, columnComment, is_nullable, column_default string
-		var maxLength, numericPrecision, numericScale sql.NullInt64
-		var columnTypeLength sql.NullString
-
+		var (
+			tableName, columnName, columnComment, dataType, is_nullable, column_default string
+			maxLength, numericPrecision, numericScale                                   sql.NullInt64
+			columnTypeLength                                                            sql.NullString
+		)
 		if err := columns.Scan(&tableName, &columnName, &dataType, &maxLength, &numericPrecision, &numericScale, &columnComment, &columnTypeLength, &is_nullable, &column_default); err != nil {
-			fmt.Println("查询表属性,information_schema.columns出错", err)
+			log.ConsoleSugar.Errorf("查询表属性,information_schema.columns出错: %v", err)
 			return nil, nil, err
 		}
 
 		// 将MySQL数据类型映射为目标端数据类型和长度信息
-		dataType = dataTypeMap[dataType]
-		switch dataType {
-		case "varchar", "char", "nchar", "nvarchar":
+		yasType, err := typedef.MysqlToYasType(dataType)
+		if err != nil {
+			log.ConsoleSugar.Error(err)
+			return nil, nil, err
+		}
+		hasDefault := len(column_default) != 0
+		var nullable_str, column_default_str string
+		switch yasType {
+		case typedef.Y_VARCHAR, typedef.Y_CHAR, typedef.Y_NCHAR, typedef.Y_NVARCHAR:
 			if maxLength.Valid {
-				// if maxLength.Int64 > 8000 {
-				// 	maxLength.Int64 = 8000
-				// }
-				dataType = fmt.Sprintf("%s(%d char)", dataType, maxLength.Int64)
+				yasType = fmt.Sprintf("%s(%d char)", yasType, maxLength.Int64)
 			}
-		case "integer", "smallint", "bigint":
+			column_default_str = getDefaultStmt(yasType, column_default, hasDefault)
+		case typedef.Y_INTEGER, typedef.Y_SMALLINT, typedef.Y_BIGINT:
 			if columnTypeLength.Valid {
-				if mysqlVersion == "8" {
-					dataType = fmt.Sprintf("%s", dataType)
-				} else {
-					dataType = fmt.Sprintf("%s(%s)", dataType, columnTypeLength.String)
+				if db.MysqlVersion != "8" {
+					yasType = fmt.Sprintf("%s(%s)", yasType, columnTypeLength.String)
 				}
-
 			}
-		case "float", "double", "number":
+			column_default_str = getDefaultStmt(yasType, column_default, hasDefault)
+		case typedef.Y_FLOAT, typedef.Y_DOUBLE, typedef.Y_NUMBER:
 			if numericPrecision.Valid && numericScale.Valid {
 				if numericPrecision.Int64 > 38 {
 					numericPrecision.Int64 = 38
 				}
-				dataType = fmt.Sprintf("%s(%d, %d)", dataType, numericPrecision.Int64, numericScale.Int64)
+				yasType = fmt.Sprintf("%s(%d, %d)", yasType, numericPrecision.Int64, numericScale.Int64)
 			}
-		case "timestamp":
+			column_default_str = getDefaultStmt(yasType, column_default, hasDefault)
+		case typedef.Y_TIMESTAMP:
 			if numericPrecision.Valid && numericScale.Valid {
-				dataType = fmt.Sprintf("%s", dataType)
+				yasType = fmt.Sprintf("%s", yasType)
 			}
-		case "bit":
+			column_default_str = getDefaultStmt(yasType, column_default, hasDefault)
+		case typedef.Y_BIT:
 			if numericPrecision.Valid {
-				dataType = fmt.Sprintf("%s(%d)", dataType, numericPrecision.Int64)
+				yasType = fmt.Sprintf("%s(%d)", yasType, numericPrecision.Int64)
 			}
-		case "raw":
+		case typedef.Y_RAW:
 			if maxLength.Valid {
-				dataType = fmt.Sprintf("%s(%d)", dataType, maxLength.Int64)
+				yasType = fmt.Sprintf("%s(%d)", yasType, maxLength.Int64)
 			}
-		}
-		var nullable_str, column_default_str string
-
-		// dateTypes := []string{"date", "time", "datetime", "timestamp", "year"}
-		if column_default != "" {
-			_, err_int := strconv.Atoi(column_default)
-			_, err_float := strconv.ParseFloat(column_default, 64)
-			// _, err_time := time.Parse("2006-01-02 15:04:05", column_default)
-			if err_int == nil {
-				column_default_str = fmt.Sprintf(" default %s", column_default)
-			} else if err_float == nil {
-				column_default_str = fmt.Sprintf(" default %s", column_default)
-			} else if dataType == "timestamp" {
-				if column_default == "CURRENT_TIMESTAMP" {
-					column_default_str = fmt.Sprintf(" default %s", column_default)
-				} else {
-					column_default_str = fmt.Sprintf(" default '%s'", column_default)
-				}
-			} else {
-				column_default_str = fmt.Sprintf(" default '%s'", column_default)
-			}
-
+		default:
+			column_default_str = getDefaultStmt(yasType, column_default, hasDefault)
 		}
 
 		//构建not null的单独语句
 		if is_nullable == "NO" {
 			// nullable_str = " not null"
-			nullable_str = fmt.Sprintf("ALTER TABLE %s.%s modify %s NOT NULL;\n", yasdb_schema, table_name, columnName)
+			nullable_str = fmt.Sprintf(sqldef.SQL_ALTER_COLUMN_NOT_NULL, yasdb_schema, table_name, columnName)
 			nullable_strs = append(nullable_strs, nullable_str)
 		}
 
 		// 构建列语句
-		columnStmt := fmt.Sprintf("%s %s%s", columnName, dataType, column_default_str)
+		columnStmt := fmt.Sprintf("%s %s%s", columnName, yasType, column_default_str)
 
 		// 将列信息添加到对应的表
 		tableColumns[tableName] = append(tableColumns[tableName], columnStmt)
@@ -649,8 +584,7 @@ func get_table_ddl(db *sql.DB, table_schema, yasdb_schema, table_name string) ([
 
 	// 构建建表语句
 	for tableName, columns := range tableColumns {
-		createTableStmt := fmt.Sprintf("CREATE TABLE %s.%s (\n\t%s\n);",
-			yasdb_schema, tableName, strings.Join(columns, ",\n\t"))
+		createTableStmt := fmt.Sprintf(sqldef.SQL_CREATE_TABLE, yasdb_schema, tableName, strings.Join(columns, ",\n\t"))
 		tablesddl := fmt.Sprintln(createTableStmt)
 		tableddls = append(tableddls, tablesddl)
 	}
@@ -663,39 +597,34 @@ func get_table_ddl(db *sql.DB, table_schema, yasdb_schema, table_name string) ([
 	}
 
 	// 查询表的自增主键列信息
-	autoincrsql := fmt.Sprintf(`SELECT COLUMN_NAME FROM information_schema.COLUMNS 
-	WHERE TABLE_SCHEMA = '%s' AND TABLE_NAME = '%s' 
-	AND EXTRA = 'auto_increment'`, table_schema, table_name)
-	rows, err := db.Query(autoincrsql)
+	rows, err := mysqlDB.Query(sqldef.SQL_QUERY_AUTO_INCREMENT, table_schema, table_name)
 	if err != nil {
-		fmt.Println("查询自增主键属性information_schema.COLUMNS出错", err)
+		log.ConsoleSugar.Errorf("查询自增主键属性information_schema.COLUMNS出错: %s", err.Error())
 		return nil, nil, err
 	}
 	defer rows.Close()
 
 	// 存储自增主键列名信息
 	var autoIncrementColumn string
-
+	// 检查是否有错误发生
+	err = rows.Err()
+	if err != nil {
+		log.ConsoleSugar.Errorf("查询自增主键属性information_schema.COLUMNS出错: %s", err.Error())
+	}
 	// 遍历结果集
 	for rows.Next() {
 		err = rows.Scan(&autoIncrementColumn)
 		if err != nil {
-			fmt.Println("查询自增主键属性information_schema.COLUMNS出错", err)
+			log.ConsoleSugar.Errorf("查询自增主键属性information_schema.COLUMNS出错: %s", err.Error())
 			return nil, nil, err
 		}
 	}
-	// 检查是否有错误发生
-	err = rows.Err()
-	if err != nil {
-		fmt.Println("查询自增主键属性information_schema.COLUMNS出错", err)
-	}
-
 	// 判断是否找到自增主键列
 	if autoIncrementColumn != "" {
 		maxidsql := fmt.Sprintf(`SELECT ifnull(max(%s),0)+1 FROM %s.%s`, autoIncrementColumn, table_schema, table_name)
-		maxidrows, err := db.Query(maxidsql)
+		maxidrows, err := mysqlDB.Query(maxidsql)
 		if err != nil {
-			fmt.Println("查询自增主键列的最大值出错", err)
+			log.ConsoleSugar.Errorf("查询自增主键列的最大值出错 %v", err)
 			return nil, nil, err
 		}
 		defer maxidrows.Close()
@@ -707,14 +636,14 @@ func get_table_ddl(db *sql.DB, table_schema, yasdb_schema, table_name string) ([
 		for maxidrows.Next() {
 			err = maxidrows.Scan(&maxidvalue)
 			if err != nil {
-				fmt.Println("查询自增主键列的最大值出错", err)
+				log.ConsoleSugar.Errorf("查询自增主键列的最大值出错: %v", err)
 				return nil, nil, err
 			}
 		}
 		// 检查是否有错误发生
 		err = maxidrows.Err()
 		if err != nil {
-			fmt.Println("查询自增主键列的最大值出错", err)
+			log.ConsoleSugar.Errorf("查询自增主键列的最大值出错: %v", err)
 			return nil, nil, err
 		}
 		// 创建 YashanDB Sequence 的名称
@@ -729,6 +658,31 @@ func get_table_ddl(db *sql.DB, table_schema, yasdb_schema, table_name string) ([
 		tableddls = append(tableddls, setDefaultValueSQL)
 	}
 	return tableddls, nullable_strs, nil
+}
+
+func getDefaultStmt(yasType string, columnDefault string, hasDefault bool) (defaultStmt string) {
+	if !hasDefault {
+		return
+	}
+	numberFormat := " default %s"
+	strFormat := " default '%s'"
+	switch yasType {
+	case typedef.Y_INTEGER, typedef.Y_SMALLINT, typedef.Y_BIGINT, typedef.Y_FLOAT, typedef.Y_DOUBLE, typedef.Y_NUMBER, typedef.Y_BIT:
+		defaultStmt = fmt.Sprintf(numberFormat, columnDefault)
+	case typedef.Y_TIMESTAMP:
+		if columnDefault == "CURRENT_TIMESTAMP" {
+			defaultStmt = fmt.Sprintf(numberFormat, columnDefault)
+		} else {
+			defaultStmt = fmt.Sprintf(strFormat, columnDefault)
+		}
+	default:
+		if columnDefault == "\x00" {
+			defaultStmt = " default NULL"
+		} else {
+			defaultStmt = fmt.Sprintf(strFormat, columnDefault)
+		}
+	}
+	return
 }
 
 func inArrayStr(target string, arr []string) bool {
@@ -746,14 +700,14 @@ func getViewDDLs(db *sql.DB, schemaName, yasdb_schema string) ([]string, error) 
 	var view_name string
 	rows, err := db.Query(fmt.Sprintf("SELECT TABLE_NAME,VIEW_DEFINITION FROM INFORMATION_SCHEMA.VIEWS WHERE TABLE_SCHEMA = '%s'", schemaName))
 	if err != nil {
-		fmt.Println("查询视图信息INFORMATION_SCHEMA.VIEWS出错", err)
+		log.ConsoleSugar.Errorf("查询视图信息INFORMATION_SCHEMA.VIEWS出错: %v", err)
 		return nil, err
 	}
 	defer rows.Close()
 
 	for rows.Next() {
 		if err := rows.Scan(&view_name, &view_ddl); err != nil {
-			fmt.Println("查询视图信息INFORMATION_SCHEMA.VIEWS出错", err)
+			log.ConsoleSugar.Errorf("查询视图信息INFORMATION_SCHEMA.VIEWS出错: %v", err)
 			return nil, err
 		}
 		view_ddl = strings.ReplaceAll(view_ddl, "`", "")
@@ -780,7 +734,7 @@ func getTriggerSQL(db *sql.DB, triggerSchema, yasdb_schema string) ([]string, er
 				and ACTION_ORIENTATION = 'ROW'
 				`, triggerSchema, triggerSchema)
 	if err != nil {
-		fmt.Println("查询触发器信息INFORMATION_SCHEMA.TRIGGERS出错", err)
+		log.ConsoleSugar.Errorf("查询触发器信息INFORMATION_SCHEMA.TRIGGERS出错", err)
 		return nil, err
 	}
 	defer rows.Close()
@@ -788,7 +742,7 @@ func getTriggerSQL(db *sql.DB, triggerSchema, yasdb_schema string) ([]string, er
 	for rows.Next() {
 		var triggerName, actionTiming, actionStatement, eventManipulation, eventObjectTable string
 		if err := rows.Scan(&triggerName, &actionTiming, &actionStatement, &eventManipulation, &eventObjectTable); err != nil {
-			fmt.Println("查询触发器信息INFORMATION_SCHEMA.TRIGGERS出错", err)
+			log.ConsoleSugar.Errorf("查询触发器信息INFORMATION_SCHEMA.TRIGGERS出错", err)
 			return nil, err
 		}
 
@@ -818,7 +772,7 @@ func getTableForeignKeys(db *sql.DB, tableSchema, yasdb_schema, tableName string
 	group by constraint_name,referenced_table_name
 	`, tableSchema, tableName)
 	if err != nil {
-		fmt.Println("查询外键信息information_schema.key_column_usage出错", err)
+		log.ConsoleSugar.Errorf("查询外键信息information_schema.key_column_usage出错: %v", err)
 		return nil, err
 	}
 	defer rows.Close()
@@ -923,10 +877,8 @@ type schema_table struct {
 	table        string
 }
 
-func deal_schemas_data(mysqlDb, yasdDb *sql.DB, schemas, remapSchemas string, excludeTables []string) {
+func deal_schemas_data(mysqlDb, yasdDb *sql.DB, table_schemas, table_remap_schemas []string, excludeTables []string) {
 	// 查询表的信息
-	table_schemas := strings.Split(schemas, ",")
-	table_remap_schemas := strings.Split(remapSchemas, ",")
 	mysqDbs := getMysqlAllDbs(mysqlDb)
 
 	sts := []schema_table{}
@@ -937,19 +889,19 @@ func deal_schemas_data(mysqlDb, yasdDb *sql.DB, schemas, remapSchemas string, ex
 							from information_schema.TABLES 
 							where table_schema=?  and table_type = 'BASE TABLE';`, schema)
 		if err != nil {
-			fmt.Println("查询表的信息information_schema.TABLES出错", err)
+			log.ConsoleSugar.Errorf("查询表的信息information_schema.TABLES出错 %s", err)
 		}
 		defer row.Close()
 
 		if !inArrayStr(schema, mysqDbs) {
-			fmt.Printf("Mysql Database %s 不存在,请检查配置文件或Mysql环境\n", schema)
+			log.ConsoleSugar.Errorf("Mysql Database %s 不存在,请检查配置文件或Mysql环境\n", schema)
 			continue
 		}
 
 		for row.Next() {
 			var tableName string
 			if err := row.Scan(&tableName); err != nil {
-				fmt.Println("查询表的信息information_schema.TABLES出错", err)
+				log.ConsoleSugar.Errorf("查询表的信息information_schema.TABLES出错 %v", err)
 			}
 			if inArrayStr(tableName, excludeTables) {
 				continue
@@ -966,7 +918,7 @@ func deal_schemas_data(mysqlDb, yasdDb *sql.DB, schemas, remapSchemas string, ex
 	start := time.Now() // 记录开始时间
 
 	// 创建一个带有缓冲区的通道，用于控制并发数量
-	semaphore := make(chan bool, parallel)
+	semaphore := make(chan bool, confdef.GetM2yConfig().Mysql.Parallel)
 	// 创建一个等待组，用于等待所有goroutine完成
 	var wg sync.WaitGroup
 
@@ -988,21 +940,18 @@ func deal_schemas_data(mysqlDb, yasdDb *sql.DB, schemas, remapSchemas string, ex
 	// 等待所有goroutine完成
 	wg.Wait()
 	elapsed := time.Since(start) // 计算经过的时间
-
-	fmt.Println("任务完成,共耗时:", elapsed)
-
+	log.ConsoleSugar.Infof("任务完成,共耗时: %v", elapsed)
 }
 
-func deal_schemas_ddl(mysqlDB *sql.DB, schemas, remapSchemas string, excludeTables []string) {
+func deal_schemas_ddl(mysqlDB *sql.DB, table_schemas, table_remap_schemas []string, excludeTables []string) {
 	// 查询表的信息
-	table_schemas := strings.Split(schemas, ",")
-	table_remap_schemas := strings.Split(remapSchemas, ",")
+
 	mysqDbs := getMysqlAllDbs(mysqlDB)
 
 	for i, schema := range table_schemas {
 
 		if !inArrayStr(schema, mysqDbs) {
-			fmt.Printf("Mysql Database %s 不存在,请检查配置文件或Mysql环境\n", schema)
+			log.ConsoleSugar.Errorf("Mysql Database %s 不存在,请检查配置文件或Mysql环境\n", schema)
 			continue
 		}
 
@@ -1014,13 +963,13 @@ func deal_schemas_ddl(mysqlDB *sql.DB, schemas, remapSchemas string, excludeTabl
 
 		table_file, err := os.Create(tab_filename)
 		if err != nil {
-			fmt.Printf("Failed to create file: %v", err)
+			log.ConsoleSugar.Errorf("Failed to create file: %v", err)
 			return
 		}
 		defer table_file.Close()
 		idx_file, err := os.Create(idx_filename)
 		if err != nil {
-			fmt.Printf("Failed to create file: %v", err)
+			log.ConsoleSugar.Errorf("Failed to create file: %v", err)
 			return
 		}
 		defer idx_file.Close()
@@ -1039,13 +988,13 @@ func deal_schemas_ddl(mysqlDB *sql.DB, schemas, remapSchemas string, excludeTabl
 							from information_schema.TABLES 
 							where table_schema=? and table_type = 'BASE TABLE';`, schema)
 		if err != nil {
-			fmt.Println("查询表的信息information_schema.TABLES出错", err)
+			log.ConsoleSugar.Errorf("查询表的信息information_schema.TABLES出错: %v", err)
 		}
 		defer tables.Close()
 		for tables.Next() {
 			var tableName string
 			if err := tables.Scan(&tableName); err != nil {
-				fmt.Println("查询表的信息information_schema.TABLES出错", err)
+				log.ConsoleSugar.Errorf("查询表的信息information_schema.TABLES出错: %v", err)
 			}
 			if inArrayStr(tableName, excludeTables) {
 				continue
@@ -1054,7 +1003,7 @@ func deal_schemas_ddl(mysqlDB *sql.DB, schemas, remapSchemas string, excludeTabl
 			for _, tableddl := range tableddls {
 				_, err = table_file.WriteString(tableddl)
 				if err != nil {
-					fmt.Printf("Failed to write to file: %v", err)
+					log.ConsoleSugar.Errorf("Failed to write to file: %v", err)
 					return
 				}
 			}
@@ -1062,7 +1011,7 @@ func deal_schemas_ddl(mysqlDB *sql.DB, schemas, remapSchemas string, excludeTabl
 			for _, tablecomment := range tablecomments {
 				_, err = table_file.WriteString(tablecomment)
 				if err != nil {
-					fmt.Printf("Failed to write to file: %v", err)
+					log.ConsoleSugar.Errorf("Failed to write to file: %v", err)
 					return
 				}
 			}
@@ -1070,7 +1019,7 @@ func deal_schemas_ddl(mysqlDB *sql.DB, schemas, remapSchemas string, excludeTabl
 			for _, nullable_str := range nullable_strs {
 				_, err = idx_file.WriteString(nullable_str)
 				if err != nil {
-					fmt.Printf("Failed to write to file: %v", err)
+					log.ConsoleSugar.Errorf("Failed to write to file: %v", err)
 					return
 				}
 			}
@@ -1082,13 +1031,13 @@ func deal_schemas_ddl(mysqlDB *sql.DB, schemas, remapSchemas string, excludeTabl
 								from information_schema.TABLES 
 								where table_schema=?  and table_type = 'BASE TABLE';`, schema)
 		if err != nil {
-			fmt.Println("查询表的信息information_schema.TABLES出错", err)
+			log.ConsoleSugar.Errorf("查询表的信息information_schema.TABLES出错: %s", err)
 		}
 		defer tables_idx.Close()
 		for tables_idx.Next() {
 			var tableName string
 			if err := tables_idx.Scan(&tableName); err != nil {
-				fmt.Println("查询表的信息information_schema.TABLES出错", err)
+				log.ConsoleSugar.Errorf("查询表的信息information_schema.TABLES出错: %s", err)
 			}
 			if inArrayStr(tableName, excludeTables) {
 				continue
@@ -1098,7 +1047,7 @@ func deal_schemas_ddl(mysqlDB *sql.DB, schemas, remapSchemas string, excludeTabl
 			for _, primarykey := range primarykeys {
 				_, err = idx_file.WriteString(primarykey)
 				if err != nil {
-					fmt.Printf("Failed to write to file: %v", err)
+					log.ConsoleSugar.Errorf("Failed to write to file: %v", err)
 					return
 				}
 			}
@@ -1106,7 +1055,7 @@ func deal_schemas_ddl(mysqlDB *sql.DB, schemas, remapSchemas string, excludeTabl
 			for _, uniqindex := range uniqindexes {
 				_, err = idx_file.WriteString(uniqindex)
 				if err != nil {
-					fmt.Printf("Failed to write to file: %v", err)
+					log.ConsoleSugar.Errorf("Failed to write to file: %v", err)
 					return
 				}
 			}
@@ -1114,7 +1063,7 @@ func deal_schemas_ddl(mysqlDB *sql.DB, schemas, remapSchemas string, excludeTabl
 			for _, nonuniqindex := range nonuniqindexes {
 				_, err = idx_file.WriteString(nonuniqindex)
 				if err != nil {
-					fmt.Printf("Failed to write to file: %v", err)
+					log.ConsoleSugar.Errorf("Failed to write to file: %v", err)
 					return
 				}
 			}
@@ -1127,13 +1076,13 @@ func deal_schemas_ddl(mysqlDB *sql.DB, schemas, remapSchemas string, excludeTabl
 									from information_schema.TABLES 
 									where table_schema=?  and table_type = 'BASE TABLE';`, schema)
 		if err != nil {
-			fmt.Println("查询表的信息information_schema.TABLES出错", err)
+			log.ConsoleSugar.Errorf("查询表的信息information_schema.TABLES出错: %v", err)
 		}
 		defer tables_cons.Close()
 		for tables_cons.Next() {
 			var tableName string
 			if err := tables_cons.Scan(&tableName); err != nil {
-				fmt.Println("查询表的信息information_schema.TABLES出错", err)
+				log.ConsoleSugar.Errorf("查询表的信息information_schema.TABLES出错: %v", err)
 			}
 			if inArrayStr(tableName, excludeTables) {
 				continue
@@ -1143,7 +1092,7 @@ func deal_schemas_ddl(mysqlDB *sql.DB, schemas, remapSchemas string, excludeTabl
 			for _, constraint := range constraints {
 				_, err = idx_file.WriteString(constraint)
 				if err != nil {
-					fmt.Printf("Failed to write to file: %v", err)
+					log.ConsoleSugar.Errorf("Failed to write to file: %v", err)
 					return
 				}
 
@@ -1158,7 +1107,7 @@ func deal_schemas_ddl(mysqlDB *sql.DB, schemas, remapSchemas string, excludeTabl
 		for _, viewDDL := range viewDDLs {
 			_, err = idx_file.WriteString(viewDDL)
 			if err != nil {
-				fmt.Printf("Failed to write to file: %v", err)
+				log.ConsoleSugar.Errorf("Failed to write to file: %v", err)
 				return
 			}
 
@@ -1185,7 +1134,7 @@ func deal_table_data(mysqlDb, yasdDb *sql.DB, mysqlSchema, yasdbSchema string, a
 	start := time.Now() // 记录开始时间
 
 	// 创建一个带有缓冲区的通道，用于控制并发数量
-	semaphore := make(chan bool, parallel)
+	semaphore := make(chan bool, confdef.GetM2yConfig().Mysql.Parallel)
 	// 创建一个等待组，用于等待所有goroutine完成
 	var wg sync.WaitGroup
 
@@ -1208,7 +1157,7 @@ func deal_table_data(mysqlDb, yasdDb *sql.DB, mysqlSchema, yasdbSchema string, a
 	wg.Wait()
 	elapsed := time.Since(start) // 计算经过的时间
 
-	fmt.Println("任务完成,共耗时:", elapsed)
+	log.ConsoleSugar.Infof("任务完成,共耗时: %v", elapsed)
 
 	// for _, tableName := range alltables {
 	// 	sync_from_mysql_to_yasdb(mysqlDb, yasdDb, mysqlSchema, yasdbSchema, tableName, tableName)
@@ -1216,36 +1165,43 @@ func deal_table_data(mysqlDb, yasdDb *sql.DB, mysqlSchema, yasdbSchema string, a
 
 }
 
-func deal_tables_ddl(db *sql.DB, schema, yasdb_schema, tables string) {
+func deal_tables_ddl(db *sql.DB, schema, yasdb_schema string, alltables []string) {
 
-	tab_filename := fmt.Sprintf("%s_tables.sql", schema)
-	idx_filename := fmt.Sprintf("%s_others.sql", schema)
+	if err := fs.Mkdir(tables_ddl); err != nil {
+		log.ConsoleSugar.Errorf("mkdir tables err: %s", err.Error())
+		return
+	}
+	if err := fs.Mkdir(others_ddl); err != nil {
+		log.ConsoleSugar.Errorf("mkdir tables err: %s", err.Error())
+		return
+	}
+	tab_filename := path.Join(tables_ddl, fmt.Sprintf("%s_tables.sql", schema))
+	idx_filename := path.Join(others_ddl, fmt.Sprintf("%s_others.sql", schema))
 
 	table_file, err := os.Create(tab_filename)
 	if err != nil {
-		fmt.Printf("Failed to create file: %v", err)
+		log.ConsoleSugar.Errorf("Failed to create file: %v", err)
 		return
 	}
 	defer table_file.Close()
 	idx_file, err := os.Create(idx_filename)
 	if err != nil {
-		fmt.Printf("Failed to create file: %v", err)
+		log.ConsoleSugar.Errorf("Failed to create file: %v", err)
 		return
 	}
 	defer idx_file.Close()
 	// 处理 &转义问题
-	define_str := "SET DEFINE OFF;\n"
-	_, err = table_file.WriteString(define_str)
+	typedef_str := "SET DEFINE OFF;\n"
+	_, err = table_file.WriteString(typedef_str)
 
 	msg_tab := "--先创建数据库内的表,列默认值,自增序列,列注释\n"
 	_, err = table_file.WriteString(msg_tab)
-	alltables := strings.Split(tables, ",")
 	for _, tableName := range alltables {
 		tableddls, nullable_strs, _ := get_table_ddl(db, schema, yasdb_schema, tableName)
 		for _, tableddl := range tableddls {
 			_, err = table_file.WriteString(tableddl)
 			if err != nil {
-				fmt.Printf("Failed to write to file: %v", err)
+				log.ConsoleSugar.Errorf("Failed to write to file: %v", err)
 				return
 			}
 		}
@@ -1253,7 +1209,7 @@ func deal_tables_ddl(db *sql.DB, schema, yasdb_schema, tables string) {
 		for _, tablecomment := range tablecomments {
 			_, err = table_file.WriteString(tablecomment)
 			if err != nil {
-				fmt.Printf("Failed to write to file: %v", err)
+				log.ConsoleSugar.Errorf("Failed to write to file: %v", err)
 				return
 			}
 		}
@@ -1262,7 +1218,7 @@ func deal_tables_ddl(db *sql.DB, schema, yasdb_schema, tables string) {
 		for _, nullable_str := range nullable_strs {
 			_, err = idx_file.WriteString(nullable_str)
 			if err != nil {
-				fmt.Printf("Failed to write to file: %v", err)
+				log.ConsoleSugar.Errorf("Failed to write to file: %v", err)
 				return
 			}
 		}
@@ -1274,7 +1230,7 @@ func deal_tables_ddl(db *sql.DB, schema, yasdb_schema, tables string) {
 		for _, primarykey := range primarykeys {
 			_, err = idx_file.WriteString(primarykey)
 			if err != nil {
-				fmt.Printf("Failed to write to file: %v", err)
+				log.ConsoleSugar.Errorf("Failed to write to file: %v", err)
 				return
 			}
 		}
@@ -1282,7 +1238,7 @@ func deal_tables_ddl(db *sql.DB, schema, yasdb_schema, tables string) {
 		for _, uniqindex := range uniqindexes {
 			_, err = idx_file.WriteString(uniqindex)
 			if err != nil {
-				fmt.Printf("Failed to write to file: %v", err)
+				log.ConsoleSugar.Errorf("Failed to write to file: %v", err)
 				return
 			}
 		}
@@ -1290,7 +1246,7 @@ func deal_tables_ddl(db *sql.DB, schema, yasdb_schema, tables string) {
 		for _, nonuniqindex := range nonuniqindexes {
 			_, err = idx_file.WriteString(nonuniqindex)
 			if err != nil {
-				fmt.Printf("Failed to write to file: %v", err)
+				log.ConsoleSugar.Errorf("Failed to write to file: %v", err)
 				return
 			}
 		}
@@ -1303,7 +1259,7 @@ func deal_tables_ddl(db *sql.DB, schema, yasdb_schema, tables string) {
 		for _, constraint := range constraints {
 			_, err = idx_file.WriteString(constraint)
 			if err != nil {
-				fmt.Printf("Failed to write to file: %v", err)
+				log.ConsoleSugar.Errorf("Failed to write to file: %v", err)
 				return
 			}
 
@@ -1330,8 +1286,8 @@ func mysqlCount(mysdb *sql.DB, schema, table string, opts ...queryFunc) (count i
 	for _, opt := range opts {
 		sql = opt(sql)
 	}
-	if query != "" {
-		sql = sql + query
+	if querySql := confdef.GetM2yConfig().Mysql.QueryStr; querySql != "" {
+		sql = sql + querySql
 	}
 	err = mysdb.QueryRow(sql).Scan(&count)
 	if err != nil {
@@ -1346,13 +1302,13 @@ func sync_table_date_from_mysql_to_yasdb(mysdb, yasdDb *sql.DB, mysqlSchema, yas
 	// 查询总记录数
 	count, err := mysqlCount(mysdb, mysqlSchema, mysqlTable)
 	if err != nil {
-		log.Printf("mysql %s.%s count err: %s", mysqlSchema, mysqlTable, err.Error())
+		log.ConsoleSugar.Errorf("mysql %s.%s count err: %s", mysqlSchema, mysqlTable, err.Error())
 		return
 	}
 	yasdbColumns, err := getYasdbColums(yasdDb, yasdbSchema, yasdbTable)
 	if err != nil {
 		str := fmt.Sprintf("%s", err)
-		fmt.Println(str)
+		log.ConsoleSugar.Errorf(str)
 		return
 	}
 
@@ -1365,13 +1321,13 @@ func sync_table_date_from_mysql_to_yasdb(mysdb, yasdDb *sql.DB, mysqlSchema, yas
 		parallel_this_table = 1
 		limit = 1000
 	} else {
-		parallel_this_table = parallel_per_table
+		parallel_this_table = confdef.GetM2yConfig().Mysql.ParallelPerTable
 		limit = count / parallel_this_table
 	}
 
 	// 记录开始时间
 	start := time.Now()
-	fmt.Println(start.Format("2006-01-02 15:04:05"), yasdbTable, "开始同步")
+	log.ConsoleSugar.Info(yasdbTable, "开始同步")
 
 	// 创建一个带有缓冲区的通道，用于控制并发数量
 	semaphore := make(chan bool, parallel_this_table)
@@ -1401,17 +1357,17 @@ func sync_table_date_from_mysql_to_yasdb(mysdb, yasdDb *sql.DB, mysqlSchema, yas
 	wg.Wait()
 	elapsed := time.Since(start) // 计算经过的时间
 
-	fmt.Println(time.Now().Format("2006-01-02 15:04:05"), yasdbTable, "处理完成,迁移数据量:", totalCount, "耗时", elapsed)
+	log.ConsoleSugar.Infof("%s 处理完成,迁移数据量: %d 耗时 %v", yasdbTable, totalCount, elapsed)
 }
 
 func sync_from_mysql_to_yasdb_ol(mysdb, yasdb *sql.DB, mysqlSchema, yasdbSchema, mysqlTable, yasdbTable string, yasdbColumns []ColumnInfo, limit, offset int) int {
 	count, err := mysqlCount(mysdb, mysqlSchema, mysqlTable, withLimit(limit, offset))
 	if err != nil {
-		log.Printf("mysql %s.%s limit: %d offset: %d count err: %s", mysqlSchema, mysqlTable, limit, offset, err.Error())
+		logError("mysql %s.%s limit: %d offset: %d count err: %s", mysqlSchema, mysqlTable, limit, offset, err.Error())
 		return 0
 	}
 	if count == 0 {
-		log.Printf("mysql %s.%s limit: %d offset: %d no data ,skip sync", mysqlSchema, mysqlTable, limit, offset)
+		log.ConsoleSugar.Warnf("mysql %s.%s limit: %d offset: %d no data ,skip sync", mysqlSchema, mysqlTable, limit, offset)
 		return 0
 	}
 	var resultCount int
@@ -1419,7 +1375,7 @@ func sync_from_mysql_to_yasdb_ol(mysdb, yasdb *sql.DB, mysqlSchema, yasdbSchema,
 	// 开始事务
 	targetTx, err := yasdb.Begin()
 	if err != nil {
-		fmt.Println("无法开始事务:", err)
+		log.ConsoleSugar.Errorf("无法开始事务: %s", err.Error())
 		return 0
 	}
 
@@ -1427,7 +1383,7 @@ func sync_from_mysql_to_yasdb_ol(mysdb, yasdb *sql.DB, mysqlSchema, yasdbSchema,
 	sql := fmt.Sprintf("SELECT * FROM %s.%s LIMIT %d OFFSET %d", mysqlSchema, mysqlTable, limit, offset)
 	rows, err := mysdb.Query(sql)
 	if err != nil {
-		fmt.Println("查询源表数据时发生错误:", err)
+		log.ConsoleSugar.Errorf("查询源表数据时发生错误: %s", err)
 		return 0
 	}
 	defer rows.Close()
@@ -1455,7 +1411,7 @@ func sync_from_mysql_to_yasdb_ol(mysdb, yasdb *sql.DB, mysqlSchema, yasdbSchema,
 		}
 		err := rows.Scan(valuePointers...)
 		if err != nil {
-			fmt.Println("扫描源表数据时发生错误:", err)
+			log.ConsoleSugar.Errorf("扫描源表数据时发生错误:", err)
 			break
 		}
 		yashanValues := make([]interface{}, len(values))
@@ -1467,8 +1423,7 @@ func sync_from_mysql_to_yasdb_ol(mysdb, yasdb *sql.DB, mysqlSchema, yasdbSchema,
 		yashanInsertQuery := buildYashanInsertQuery(yasdbSchema, yasdbTable, yasdbColumns)
 		_, err = targetTx.Exec(yashanInsertQuery, yashanValues...)
 		if err != nil {
-			fmt.Println(time.Now().Format("2006-01-02 15:04:05"), yasdbTable, "数据插入时发生错误:", err)
-			fmt.Print(yashanInsertQuery)
+			logError("%s 数据插入时发生错误: %s", yasdbTable, err.Error())
 			var values string
 			for i, val := range yashanValues {
 				if i > 0 {
@@ -1476,18 +1431,18 @@ func sync_from_mysql_to_yasdb_ol(mysdb, yasdb *sql.DB, mysqlSchema, yasdbSchema,
 				}
 				values += fmt.Sprintf("%v", val)
 			}
-			fmt.Println(values)
-			break
+			logError("insert sql: %s ,values: (%s)", yashanInsertQuery, values)
+			continue
 		}
 		// 计数器递增
 		batchCount++
 		resultCount++
 		// 达到批次提交的数据量上限时,执行提交操作
 
-		if batchCount >= commitSize {
+		if batchCount >= confdef.GetM2yConfig().Mysql.BatchSize {
 			err = targetTx.Commit()
 			if err != nil {
-				fmt.Println("提交事务时发生错误:", err)
+				log.ConsoleSugar.Errorf("提交事务时发生错误: %v", err)
 				break
 			}
 			// 重置计数器
@@ -1495,7 +1450,7 @@ func sync_from_mysql_to_yasdb_ol(mysdb, yasdb *sql.DB, mysqlSchema, yasdbSchema,
 			// 开始新的事务
 			targetTx, err = yasdb.Begin()
 			if err != nil {
-				fmt.Println("无法开始事务:", err)
+				log.ConsoleSugar.Errorf("无法开始事务: %v", err)
 				break
 			}
 		}
@@ -1505,7 +1460,7 @@ func sync_from_mysql_to_yasdb_ol(mysdb, yasdb *sql.DB, mysqlSchema, yasdbSchema,
 	if batchCount > 0 {
 		err = targetTx.Commit()
 		if err != nil {
-			fmt.Println("提交事务时发生错误:", err)
+			log.ConsoleSugar.Errorf("提交事务时发生错误: %v", err)
 			return 0
 		}
 	}
@@ -1527,7 +1482,7 @@ func getYasdbColums(yasdb *sql.DB, yasdbSchema, yasdbTable string) ([]ColumnInfo
 	yasdbSql := fmt.Sprintf("select DATA_TYPE,COLUMN_NAME from all_tab_columns where owner='%s' and TABLE_NAME='%s' order by COLUMN_ID", yasdbSchema, yasdbTable)
 	yasdbRows, err := yasdb.Query(yasdbSql)
 	if err != nil {
-		fmt.Println("查询目标结构时发生错误:", err)
+		log.ConsoleSugar.Errorf("查询目标结构时发生错误: %v", err)
 		return nil, err
 	}
 	defer yasdbRows.Close()
@@ -1536,7 +1491,7 @@ func getYasdbColums(yasdb *sql.DB, yasdbSchema, yasdbTable string) ([]ColumnInfo
 
 		err := yasdbRows.Scan(&yasdbColumnType, &yasdbColumnName)
 		if err != nil {
-			fmt.Println("查询目标结构时发生错误:", err)
+			log.ConsoleSugar.Errorf("查询目标结构时发生错误:", err)
 			break
 		}
 		var ci ColumnInfo
@@ -1550,6 +1505,7 @@ func getYasdbColums(yasdb *sql.DB, yasdbSchema, yasdbTable string) ([]ColumnInfo
 	}
 	return yasdbColumns, err
 }
+
 func uint8SliceToInt(slice []uint8) int {
 	var result int
 	for _, val := range slice {
@@ -1622,7 +1578,7 @@ func getMysqlAllDbs(mysqlDB *sql.DB) []string {
 	// 查询数据库信息
 	rows, err := mysqlDB.Query("SHOW DATABASES")
 	if err != nil {
-		fmt.Println("查询Mysql DATABASES失败:", err)
+		log.ConsoleSugar.Errorf("查询Mysql DATABASES失败: %v", err)
 		return nil
 	}
 	defer rows.Close()
@@ -1632,7 +1588,7 @@ func getMysqlAllDbs(mysqlDB *sql.DB) []string {
 	for rows.Next() {
 		err := rows.Scan(&dbName)
 		if err != nil {
-			fmt.Println("遍历Mysql DATABASES结果失败:", err)
+			log.ConsoleSugar.Errorf("遍历Mysql DATABASES结果失败: %v", err)
 			return nil
 		}
 		dbs = append(dbs, dbName)
@@ -1640,202 +1596,95 @@ func getMysqlAllDbs(mysqlDB *sql.DB) []string {
 
 	err = rows.Err()
 	if err != nil {
-		fmt.Println("遍历Mysql DATABASES结果失败:", err)
+		log.ConsoleSugar.Errorf("遍历Mysql DATABASES结果失败: %v", err)
 		return nil
 	}
 	return dbs
 }
 
-func main() {
+func initApp(config string) error {
+	confdef.InitConfig(config)
+	db.LoadMysqlDB(confdef.GetM2yConfig().Mysql)
+	db.LoadYashanDB(confdef.GetM2yConfig().Yashan)
+	log.InitLog()
+	return nil
+}
 
+func main() {
+	help, version, data, config := parseFlag()
+	fmt.Println()
+	if help {
+		printHelp()
+		return
+	}
+	if version {
+		printVersion()
+		return
+	}
+	if config == "" {
+		config = "db.toml"
+	}
+	if err := initApp(config); err != nil {
+		fmt.Println(err)
+		return
+	}
+	m2yConf := confdef.GetM2yConfig()
+	mConf, yConf := m2yConf.Mysql, m2yConf.Yashan
+	mTables, mSchemas := mConf.Tables, mConf.Schemas
+	mTableLen, mSchemasLen := len(mTables), len(mSchemas)
+	yRempSchemas := yConf.RemapSchemas
+	yRempSchemasLen := len(yRempSchemas)
+	if data {
+		log.ConsoleSugar.Infof("本次数据同步多表并发度为: %d", mConf.Parallel)
+		log.ConsoleSugar.Infof("本次数据同步表内并行度为: %d", mConf.ParallelPerTable)
+		log.ConsoleSugar.Infof("本次数据同步批处理大小为: %d", mConf.BatchSize)
+		if len(mTables) != 0 {
+			yasdb_schema := yConf.RemapSchemas[0]
+			deal_table_data(db.MysqlDB, db.YashanDB, mConf.Database, yasdb_schema, mConf.Tables)
+		}
+		if len(mSchemas) != 0 {
+			if mSchemasLen != yRempSchemasLen {
+				log.ConsoleSugar.Infof("schemas和remap_schemas数量不一致,请检查配置文件:")
+				return
+			} else {
+				deal_schemas_data(db.MysqlDB, db.YashanDB, mConf.Schemas, yConf.RemapSchemas, mConf.ExcludeTables)
+			}
+		}
+		return
+	}
+	if mTableLen != 0 {
+		deal_tables_ddl(db.MysqlDB, mConf.Database, yConf.RemapSchemas[0], mConf.Tables)
+	}
+	if mSchemasLen != 0 {
+		if mSchemasLen != yRempSchemasLen {
+			log.ConsoleSugar.Error("schemas和remap_schemas数量不一致,请检查配置文件")
+			return
+		}
+		deal_schemas_ddl(db.MysqlDB, mSchemas, yRempSchemas, mConf.ExcludeTables)
+	}
+	log.ConsoleSugar.Info("ddl文件生成完成。")
+}
+
+func ToJsonStr(v interface{}) string {
+	bytes, _ := json.MarshalIndent(v, "", "   ")
+	return string(bytes)
+}
+
+func parseFlag() (bool, bool, bool, string) {
 	help := flag.Bool("h", false, "显示帮助信息")
 	version := flag.Bool("v", false, "显示版本号")
 	config := flag.String("c", "", "设置配置文件")
 	data := flag.Bool("d", false, "同步表数据")
-	// 使用 Var 函数绑定长参数到相同的变量上
-	var longHelp, longVersion, longData bool
-	flag.BoolVar(&longHelp, "help", false, "显示帮助信息")
-	flag.BoolVar(&longVersion, "version", false, "显示程序版本号")
+	var lang_help, lang_data, lang_version bool
+	flag.BoolVar(&lang_help, "help", false, "显示帮助信息")
+	flag.BoolVar(&lang_version, "version", false, "显示程序版本号")
 	flag.StringVar(config, "config", "", "设置配置文件")
-	flag.BoolVar(&longData, "data", false, "同步表数据")
-
+	flag.BoolVar(&lang_data, "data", false, "同步表数据")
 	flag.Parse()
+	return *help || lang_help, *version || lang_version, *data || lang_data, *config
+}
 
-	// 执行相应的逻辑
-	if *help || longHelp {
-		printHelp()
-		return
-	}
-
-	if *version || longVersion {
-		printVersion()
-		return
-	}
-
-	inifile := "db.ini"
-	if *config != "" {
-		inifile = fmt.Sprintf(*config)
-	}
-
-	cfg, err := ini.Load(inifile)
-	if err != nil {
-		log.Fatalf("Failed to load config file: %v", err)
-	}
-
-	// 读取Mysql配置项的值
-	section := cfg.Section("mysql")
-	if section == nil {
-		log.Fatal("Failed to find [mysql] section")
-		return
-	}
-
-	mysqlHost := section.Key("host").String()
-	mysqlPort, _ := section.Key("port").Int()
-	mysqlDatabase := section.Key("database").String()
-	mysqlUsername := section.Key("username").String()
-	mysqlPassword := section.Key("password").String()
-
-	schemas := section.Key("schemas").String()
-	tables := section.Key("tables").String()
-	exclude_tables := section.Key("exclude_tables").String()
-	query_str := section.Key("query").String()
-
-	if query_str != "" {
-		query = query_str
-	}
-
-	//设置	parallel 默认值为1
-	parallel = 1
-	parallel_set, _ := section.Key("parallel").Int()
-	if parallel_set >= 0 && parallel_set <= 8 {
-		if parallel_set > 0 {
-			parallel = parallel_set
-		}
-	} else {
-		fmt.Println("parallel的取值范围是1-8:")
-		return
-	}
-	//设置	parallel_per_table 默认值为1
-	parallel_per_table = 1
-	parallel_per_table_set, _ := section.Key("parallel_per_table").Int()
-	if parallel_per_table_set >= 0 && parallel_per_table_set <= 8 {
-		if parallel_per_table_set >= 1 {
-			parallel_per_table = parallel_per_table_set
-		}
-	} else {
-		fmt.Println("parallel_per_table的取值范围是1-8:")
-		return
-	}
-
-	//设置	batchSize_set 默认值为1000
-	commitSize = 1000
-	commitSize_set, _ := section.Key("batchSize").Int()
-	if commitSize_set > 1 {
-		commitSize = commitSize_set
-	}
-
-	// 读取YashanDB配置项的值
-	section = cfg.Section("yashandb")
-	if section == nil {
-		log.Fatal("Failed to find [yashandb] section")
-		return
-	}
-
-	yasdbHost := section.Key("host").String()
-	yasdbPort, _ := section.Key("port").Int()
-	yasdbUsername := section.Key("username").String()
-	yasdbPassword := section.Key("password").String()
-	remap_schemas := section.Key("remap_schemas").String()
-
-	if tables != "" && schemas != "" {
-		fmt.Println("schemas 和 tables 这两个参数不能同时配置,请检查配置文件:" + inifile)
-		return
-	}
-
-	if tables == "" && schemas == "" {
-		fmt.Println("schemas 和 tables 这两个参数至少需要配置一个,请检查配置文件:" + inifile)
-		return
-	}
-
-	if remap_schemas == "" {
-		fmt.Println("需要配置remap_schemas,指定在崖山要导入的用户,请检查配置文件:", inifile)
-		return
-	}
-
-	// 数据库连接配置
-	mysqlDsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s", mysqlUsername, mysqlPassword, mysqlHost, mysqlPort, mysqlDatabase)
-	mysqlDB, err := sql.Open("mysql", mysqlDsn)
-	if err != nil {
-		fmt.Println("连接Mmysql时出错", err)
-	}
-	defer mysqlDB.Close()
-	// 执行查询语句
-	err = mysqlDB.QueryRow("SELECT VERSION()").Scan(&mysqlVersion)
-	if err != nil {
-		fmt.Println("查询 MySQL 版本失败:", err)
-		return
-	}
-	// 将查询结果赋值给全局变量 versio
-	mysqlVersion = mysqlVersion[0:1]
-
-	// 查询 lower_case_table_names 参数的值
-	var variableName, lowerCaseValue string
-	err = mysqlDB.QueryRow("SHOW VARIABLES LIKE 'lower_case_table_names'").Scan(&variableName, &lowerCaseValue)
-	if err != nil {
-		fmt.Println("查询数据库参数失败:", err)
-		return
-	}
-
-	// fmt.Println("lower_case_table_names 参数的值为:", lowerCaseValue)
-
-	var excludeTables []string
-	str := strings.Split(exclude_tables, ",")
-	for _, i := range str {
-		if lowerCaseValue == "1" {
-			excludeTables = append(excludeTables, strings.ToLower(i))
-		} else {
-			excludeTables = append(excludeTables, i)
-		}
-	}
-
-	if *data || longData {
-		fmt.Println("本次数据同步多表并发度为:", parallel)
-		fmt.Println("本次数据同步表内并行度为:", parallel_per_table)
-		fmt.Println("本次数据同步批处理大小为:", commitSize)
-		yasdbDsn := fmt.Sprintf("%s/%s@%s:%d", yasdbUsername, yasdbPassword, yasdbHost, yasdbPort)
-		yasdDb := ConnectYasdb(yasdbDsn)
-		yasdDb.SetMaxOpenConns(100)
-		yasdDb.SetMaxIdleConns(50)
-		defer yasdDb.Close()
-
-		if tables != "" {
-			alltables := strings.Split(tables, ",")
-			remap_schemas := strings.Split(remap_schemas, ",")
-			yasdb_schema := remap_schemas[0]
-			deal_table_data(mysqlDB, yasdDb, mysqlDatabase, yasdb_schema, alltables)
-		}
-		if schemas != "" {
-			if len(strings.Split(schemas, ",")) != len(strings.Split(remap_schemas, ",")) {
-				fmt.Println("schemas和remap_schemas数量不一致,请检查配置文件:", inifile)
-				return
-			} else {
-				deal_schemas_data(mysqlDB, yasdDb, schemas, remap_schemas, excludeTables)
-			}
-		}
-	} else {
-		if tables != "" {
-			remap_schemas := strings.Split(remap_schemas, ",")
-			yasdb_schema := remap_schemas[0]
-			deal_tables_ddl(mysqlDB, mysqlDatabase, yasdb_schema, tables)
-		}
-		if schemas != "" {
-			if len(strings.Split(schemas, ",")) != len(strings.Split(remap_schemas, ",")) {
-				fmt.Println("schemas和remap_schemas数量不一致,请检查配置文件:", inifile)
-				return
-			} else {
-				deal_schemas_ddl(mysqlDB, schemas, remap_schemas, excludeTables)
-			}
-		}
-		fmt.Println("ddl文件生成完成。")
-	}
+func logError(format string, args ...any) {
+	log.ConsoleSugar.Errorf(format, args...)
+	log.ErrorSugar.Errorf(format, args...)
 }

@@ -24,7 +24,7 @@ BIN_M2Y=$(BUILD_PATH)/mysql2yasdb
 
 LIB_PATH=$(PKG_PATH)/scripts
 
-FILE_TO_COPY=./lib db.ini README.md $(BIN_M2Y)
+FILE_TO_COPY=./lib db.toml README.md $(BIN_M2Y)
 
 .PHONY: clean force go_build
 

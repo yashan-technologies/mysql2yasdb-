@@ -3,3 +3,4 @@ build
 jira
 mysql2yasdb
 *.sql
+*.log
