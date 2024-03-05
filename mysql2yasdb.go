@@ -573,7 +573,7 @@ func get_table_ddl(mysqlDB *sql.DB, table_schema, yasdb_schema, table_name strin
 		}
 
 		// 构建列语句
-		columnStmt := fmt.Sprintf("%s %s%s", columnName, yasType, column_default_str)
+		columnStmt := fmt.Sprintf("\"%s\" %s%s", columnName, yasType, column_default_str)
 
 		// 将列信息添加到对应的表
 		tableColumns[tableName] = append(tableColumns[tableName], columnStmt)
@@ -1562,7 +1562,7 @@ func convertToYashanType(value interface{}, columnType string) interface{} {
 
 // 构建YashanDB插入语句
 func buildYashanInsertQuery(yasdbSchema, tableName string, columns []ColumnInfo) string {
-	query := fmt.Sprintf("INSERT INTO %s.\"%s\" (", yasdbSchema, tableName)
+	query := fmt.Sprintf("INSERT INTO \"%s\".\"%s\" (", yasdbSchema, tableName)
 	for i, column := range columns {
 		if i > 0 {
 			query += ","

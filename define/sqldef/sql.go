@@ -9,7 +9,7 @@ const (
 	WHERE table_schema = ? 
 	and table_name = ? order by  ORDINAL_POSITION`
 
-	SQL_ALTER_COLUMN_NOT_NULL = "ALTER TABLE \"%s\".\"%s\" modify %s NOT NULL;\n"
+	SQL_ALTER_COLUMN_NOT_NULL = "ALTER TABLE \"%s\".\"%s\" modify \"%s\" NOT NULL;\n"
 
 	SQL_CREATE_TABLE = "CREATE TABLE \"%s\".\"%s\" (\n\t%s\n);"
 
