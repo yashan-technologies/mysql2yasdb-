@@ -106,7 +106,7 @@ func get_non_uniq_index_ddl(mysqlDB *sql.DB, table_schema, yasdb_schema, table_n
 
 		// 生成创建索引的语句
 		for _, columns := range indexMap {
-			columnString := strings.Join(columns, ", ")
+			columnString := genColumnString(columns)
 			columnStringName := strings.Join(columns, "_")
 			index_name := "idx_" + table + "_" + columnStringName
 			if len(index_name) > 64 {
@@ -172,7 +172,7 @@ func get_non_uniq_index_ddl(mysqlDB *sql.DB, table_schema, yasdb_schema, table_n
 
 		// 生成创建索引的语句
 		for _, columns := range indexMap {
-			columnString := strings.Join(columns, ", ")
+			columnString := genColumnString(columns)
 			columnStringName := strings.Join(columns, "_")
 			index_name := "idx_" + table + "_" + columnStringName
 			nonuniqindex := fmt.Sprintf("CREATE INDEX \"%s\".\"%s\" ON \"%s\".\"%s\" (%s);\n", yasdb_schema, index_name, yasdb_schema, table, columnString)
@@ -255,7 +255,7 @@ func get_uniq_index_ddl(mysqlDB *sql.DB, table_schema, yasdb_schema, table_name 
 
 		// 生成创建索引的语句
 		for _, columns := range indexMap {
-			columnString := strings.Join(columns, ", ")
+			columnString := genColumnString(columns)
 			columnStringName := strings.Join(columns, "_")
 			index_name := "idx_" + table + "_" + columnStringName
 			if len(index_name) > 64 {
@@ -324,7 +324,7 @@ func get_uniq_index_ddl(mysqlDB *sql.DB, table_schema, yasdb_schema, table_name 
 
 		// 生成创建索引的语句
 		for _, columns := range indexMap {
-			columnString := strings.Join(columns, ", ")
+			columnString := genColumnString(columns)
 			columnStringName := strings.Join(columns, "_")
 			index_name := "idx_" + table + "_" + columnStringName
 			if len(index_name) > 64 {
@@ -342,6 +342,14 @@ func get_uniq_index_ddl(mysqlDB *sql.DB, table_schema, yasdb_schema, table_name 
 	}
 
 	return uniqindexes, nil
+}
+
+func genColumnString(columns []string) string {
+	var newColumns []string
+	for _, column := range columns {
+		newColumns = append(newColumns, fmt.Sprintf("\"%s\"", column))
+	}
+	return strings.Join(newColumns, ", ")
 }
 
 func get_primary_key_ddl(mysqlDB *sql.DB, table_schema, yasdb_schema, table_name string) ([]string, error) {
@@ -412,7 +420,7 @@ func get_primary_key_ddl(mysqlDB *sql.DB, table_schema, yasdb_schema, table_name
 
 		// 生成创建索引的语句
 		for _, columns := range indexMap {
-			columnString := strings.Join(columns, ", ")
+			columnString := genColumnString(columns)
 			//columnStringName := strings.Join(columns, "_")
 			//index_name := "idx_" + table + "_" + columnStringName
 			primarykey := fmt.Sprintf("ALTER TABLE \"%s\".\"%s\" ADD PRIMARY KEY (%s);\n", yasdb_schema, table, columnString)
@@ -477,7 +485,7 @@ func get_primary_key_ddl(mysqlDB *sql.DB, table_schema, yasdb_schema, table_name
 
 		// 生成创建索引的语句
 		for _, columns := range indexMap {
-			columnString := strings.Join(columns, ", ")
+			columnString := genColumnString(columns)
 			//columnStringName := strings.Join(columns, "_")
 			//index_name := "idx_" + table + "_" + columnStringName
 			primarykey := fmt.Sprintf("ALTER  TABLE \"%s\".\"%s\" ADD PRIMARY KEY (%s);\n", yasdb_schema, table, columnString)
@@ -712,7 +720,7 @@ func getViewDDLs(db *sql.DB, schemaName, yasdb_schema string) ([]string, error) 
 		}
 		view_ddl = strings.ReplaceAll(view_ddl, "`", "")
 		view_ddl = strings.ReplaceAll(view_ddl, schemaName+".", "")
-		view_ddl = fmt.Sprint("CREATE VIEW ", yasdb_schema, ".", view_name, " AS ", view_ddl, ";\n")
+		view_ddl = fmt.Sprintf("CREATE VIEW \"%s\".\"%s\" AS %s ;\n", yasdb_schema, view_name, view_ddl)
 
 		view_ddls = append(view_ddls, view_ddl)
 	}
@@ -829,7 +837,7 @@ func getTableComments(db *sql.DB, tableSchema, yasdb_schema, tableName string) (
 		}
 		if tableComment.String != "" {
 			tablecomment := fmt.Sprintf(
-				"COMMENT ON TABLE %s.%s IS '%s' ;\n",
+				"COMMENT ON TABLE \"%s\".\"%s\" IS '%s' ;\n",
 				yasdb_schema,
 				tableName,
 				tableComment.String,
