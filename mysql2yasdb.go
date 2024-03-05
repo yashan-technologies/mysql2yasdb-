@@ -112,7 +112,7 @@ func get_non_uniq_index_ddl(mysqlDB *sql.DB, table_schema, yasdb_schema, table_n
 			if len(index_name) > 64 {
 				index_name = index_name[0:64]
 			}
-			nonuniqindex := fmt.Sprintf("CREATE INDEX %s.%s ON %s.%s (%s);\n", yasdb_schema, index_name, yasdb_schema, table, columnString)
+			nonuniqindex := fmt.Sprintf("CREATE INDEX \"%s\".\"%s\" ON \"%s\".\"%s\" (%s);\n", yasdb_schema, index_name, yasdb_schema, table, columnString)
 			nonuniqindexes = append(nonuniqindexes, nonuniqindex)
 		}
 		if err = rows.Err(); err != nil {
@@ -175,7 +175,7 @@ func get_non_uniq_index_ddl(mysqlDB *sql.DB, table_schema, yasdb_schema, table_n
 			columnString := strings.Join(columns, ", ")
 			columnStringName := strings.Join(columns, "_")
 			index_name := "idx_" + table + "_" + columnStringName
-			nonuniqindex := fmt.Sprintf("CREATE INDEX %s.%s ON %s.%s (%s);\n", yasdb_schema, index_name, yasdb_schema, table, columnString)
+			nonuniqindex := fmt.Sprintf("CREATE INDEX \"%s\".\"%s\" ON \"%s\".\"%s\" (%s);\n", yasdb_schema, index_name, yasdb_schema, table, columnString)
 			nonuniqindexes = append(nonuniqindexes, nonuniqindex)
 		}
 		if err = rows.Err(); err != nil {
@@ -261,8 +261,8 @@ func get_uniq_index_ddl(mysqlDB *sql.DB, table_schema, yasdb_schema, table_name 
 			if len(index_name) > 64 {
 				index_name = index_name[0:64]
 			}
-			uniqindex := fmt.Sprintf("CREATE UNIQUE INDEX %s.%s ON %s.%s (%s);\n", yasdb_schema, index_name, yasdb_schema, table, columnString)
-			uniqcons := fmt.Sprintf("ALTER TABLE  %s.%s ADD CONSTRAINT %s UNIQUE (%s);\n", yasdb_schema, table, index_name, columnString)
+			uniqindex := fmt.Sprintf("CREATE UNIQUE INDEX \"%s\".\"%s\" ON \"%s\".\"%s\" (%s);\n", yasdb_schema, index_name, yasdb_schema, table, columnString)
+			uniqcons := fmt.Sprintf("ALTER TABLE  \"%s\".\"%s\" ADD CONSTRAINT %s UNIQUE (%s);\n", yasdb_schema, table, index_name, columnString)
 			uniqindexes = append(uniqindexes, uniqindex)
 			uniqindexes = append(uniqindexes, uniqcons)
 
@@ -330,8 +330,8 @@ func get_uniq_index_ddl(mysqlDB *sql.DB, table_schema, yasdb_schema, table_name 
 			if len(index_name) > 64 {
 				index_name = index_name[0:64]
 			}
-			uniqindex := fmt.Sprintf("CREATE UNIQUE INDEX %s.%s ON %s.%s (%s);\n", yasdb_schema, index_name, yasdb_schema, table, columnString)
-			uniqcons := fmt.Sprintf("ALTER TABLE  %s.%s ADD CONSTRAINT %s UNIQUE (%s);\n", yasdb_schema, table, index_name, columnString)
+			uniqindex := fmt.Sprintf("CREATE UNIQUE INDEX \"%s\".\"%s\" ON \"%s\".\"%s\" (%s);\n", yasdb_schema, index_name, yasdb_schema, table, columnString)
+			uniqcons := fmt.Sprintf("ALTER TABLE  \"%s\".\"%s\" ADD CONSTRAINT %s UNIQUE (%s);\n", yasdb_schema, table, index_name, columnString)
 			uniqindexes = append(uniqindexes, uniqindex)
 			uniqindexes = append(uniqindexes, uniqcons)
 
@@ -415,7 +415,7 @@ func get_primary_key_ddl(mysqlDB *sql.DB, table_schema, yasdb_schema, table_name
 			columnString := strings.Join(columns, ", ")
 			//columnStringName := strings.Join(columns, "_")
 			//index_name := "idx_" + table + "_" + columnStringName
-			primarykey := fmt.Sprintf("ALTER TABLE %s.%s ADD PRIMARY KEY (%s);\n", yasdb_schema, table, columnString)
+			primarykey := fmt.Sprintf("ALTER TABLE \"%s\".\"%s\" ADD PRIMARY KEY (%s);\n", yasdb_schema, table, columnString)
 			primarykeys = append(primarykeys, primarykey)
 		}
 		if err = rows.Err(); err != nil {
@@ -480,7 +480,7 @@ func get_primary_key_ddl(mysqlDB *sql.DB, table_schema, yasdb_schema, table_name
 			columnString := strings.Join(columns, ", ")
 			//columnStringName := strings.Join(columns, "_")
 			//index_name := "idx_" + table + "_" + columnStringName
-			primarykey := fmt.Sprintf("ALTER  TABLE %s.%s ADD PRIMARY KEY (%s);\n", yasdb_schema, table, columnString)
+			primarykey := fmt.Sprintf("ALTER  TABLE \"%s\".\"%s\" ADD PRIMARY KEY (%s);\n", yasdb_schema, table, columnString)
 			primarykeys = append(primarykeys, primarykey)
 		}
 		if err = rows.Err(); err != nil {
@@ -590,7 +590,7 @@ func get_table_ddl(mysqlDB *sql.DB, table_schema, yasdb_schema, table_name strin
 	}
 	for column, comment := range columnComments {
 		if comment != "" {
-			commentddl := fmt.Sprintf("COMMENT ON COLUMN %s.%s.%s IS '%s';\n", yasdb_schema, table_name, column, comment)
+			commentddl := fmt.Sprintf("COMMENT ON COLUMN \"%s\".\"%s\".\"%s\" IS '%s';\n", yasdb_schema, table_name, column, comment)
 			tableddls = append(tableddls, commentddl)
 		}
 
@@ -650,10 +650,10 @@ func get_table_ddl(mysqlDB *sql.DB, table_schema, yasdb_schema, table_name strin
 		sequenceName := strings.ToUpper("SEQ_" + table_name + "_" + autoIncrementColumn)
 
 		// 生成创建 YashanDB Sequence 的语句
-		createSequenceSQL := fmt.Sprintf("CREATE SEQUENCE %s.%s START WITH %s INCREMENT BY 1;\n", yasdb_schema, sequenceName, maxidvalue)
+		createSequenceSQL := fmt.Sprintf("CREATE SEQUENCE \"%s\".\"%s\" START WITH %s INCREMENT BY 1;\n", yasdb_schema, sequenceName, maxidvalue)
 
 		// 生成设置列默认值的语句
-		setDefaultValueSQL := fmt.Sprintf("ALTER TABLE %s.%s MODIFY %s DEFAULT %s.%s.NEXTVAL;\n", yasdb_schema, table_name, autoIncrementColumn, yasdb_schema, sequenceName)
+		setDefaultValueSQL := fmt.Sprintf("ALTER TABLE \"%s\".\"%s\" MODIFY \"%s\" DEFAULT \"%s\".\"%s\".NEXTVAL;\n", yasdb_schema, table_name, autoIncrementColumn, yasdb_schema, sequenceName)
 		tableddls = append(tableddls, createSequenceSQL)
 		tableddls = append(tableddls, setDefaultValueSQL)
 	}
@@ -746,7 +746,7 @@ func getTriggerSQL(db *sql.DB, triggerSchema, yasdb_schema string) ([]string, er
 			return nil, err
 		}
 
-		triggerSQL := fmt.Sprintf("CREATE TRIGGER %s.%s %s %s ON %s.%s FOR EACH ROW %s;\n/\n", yasdb_schema, triggerName, actionTiming, eventManipulation, yasdb_schema, eventObjectTable, actionStatement)
+		triggerSQL := fmt.Sprintf("CREATE TRIGGER \"%s\".\"%s\" %s %s ON \"%s\".\"%s\" FOR EACH ROW %s;\n/\n", yasdb_schema, triggerName, actionTiming, eventManipulation, yasdb_schema, eventObjectTable, actionStatement)
 		// fmt.Println(triggerSQL)
 		existingTriggerSQL = append(existingTriggerSQL, triggerSQL)
 	}
@@ -784,7 +784,7 @@ func getTableForeignKeys(db *sql.DB, tableSchema, yasdb_schema, tableName string
 			return nil, err
 		}
 		constraint := fmt.Sprintf(
-			"ALTER TABLE %s.%s ADD CONSTRAINT %s FOREIGN KEY (%s) REFERENCES %s.%s(%s);\n",
+			"ALTER TABLE \"%s\".\"%s\" ADD CONSTRAINT %s FOREIGN KEY (\"%s\") REFERENCES \"%s\".\"%s\"(\"%s\");\n",
 			yasdb_schema,
 			tableName,
 			constraintName.String,
@@ -1485,7 +1485,7 @@ func getYasdbColums(yasdb *sql.DB, yasdbSchema, yasdbTable string) ([]ColumnInfo
 	} else {
 		yasdbSchema = strings.ToUpper(yasdbSchema)
 	}
-	yasdbTable = strings.ToUpper(yasdbTable)
+	// yasdbTable = strings.ToUpper(yasdbTable)
 	yasdbSql := fmt.Sprintf("select DATA_TYPE,COLUMN_NAME from all_tab_columns where owner='%s' and TABLE_NAME='%s' order by COLUMN_ID", yasdbSchema, yasdbTable)
 	yasdbRows, err := yasdb.Query(yasdbSql)
 	if err != nil {
@@ -1562,7 +1562,7 @@ func convertToYashanType(value interface{}, columnType string) interface{} {
 
 // 构建YashanDB插入语句
 func buildYashanInsertQuery(yasdbSchema, tableName string, columns []ColumnInfo) string {
-	query := fmt.Sprintf("INSERT INTO %s.%s (", yasdbSchema, tableName)
+	query := fmt.Sprintf("INSERT INTO %s.\"%s\" (", yasdbSchema, tableName)
 	for i, column := range columns {
 		if i > 0 {
 			query += ","
