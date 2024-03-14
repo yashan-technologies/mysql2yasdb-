@@ -4,3 +4,11 @@ jira
 mysql2yasdb
 *.sql
 *.log
+__pycache__
+.mypy_cache
+build
+*.log
+console.out
+code_check.txt
+unittest
+go.work*

@@ -3,13 +3,22 @@ package db
 import (
 	"database/sql"
 	"fmt"
-	"m2y/define/confdef"
 	"strings"
+
+	"m2y/defs/confdef"
+
+	_ "git.yasdb.com/go/yasdb-go"
+	_ "github.com/go-sql-driver/mysql"
 )
 
 const (
 	driver_mysql    = "mysql"
 	driver_yashandb = "yasdb"
+)
+
+const (
+	MYSQL_VERSION_5 = "5"
+	MYSQL_VERSION_8 = "8"
 )
 
 var (
@@ -38,7 +47,6 @@ func LoadYashanDB(yashan *confdef.YashanConfig) (err error) {
 	}
 	yasDB.SetMaxOpenConns(100)
 	yasDB.SetMaxIdleConns(50)
-	//
 	YashanDB = yasDB
 	return
 }

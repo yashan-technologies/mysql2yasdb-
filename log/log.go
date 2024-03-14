@@ -2,84 +2,161 @@ package log
 
 import (
 	"fmt"
-	"m2y/commons"
-	"m2y/define/runtimedef"
 	"os"
 	"path"
-	"time"
+	"strings"
 
+	"m2y/defs/compiledef"
+	"m2y/defs/runtimedef"
+	"m2y/utils/fileutil"
+	"m2y/utils/userutil"
+
+	"git.yasdb.com/go/yaslog"
 	"git.yasdb.com/go/yasutil/fs"
-	"github.com/natefinch/lumberjack"
-	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 )
 
 const (
-	_console_name = "console"
-	_error_name   = "error"
+	LEVEL_DEBUG   = "DEBUG"
+	LEVEL_NOTICE  = "NOTICE"
+	LEVEL_INFO    = "INFO"
+	LEVEL_WARNING = "WARNING"
+	LEVEL_ERROR   = "ERROR"
+	LEVEL_FATAL   = "FATAL"
 )
 
 const (
-	_default_level = "DEBUG"
+	_LOG_MODULE_CONTROLLER = "controller"
+	_LOG_MODULE_HANDLER    = "handler"
+	_LOG_MODULE_MODULE     = "module"
+	_LOG_MODULE_YASQL      = "yasql"
+	_LOG_MODULE_EXECER     = "execer"
+	_LOG_MODULE_UTIL       = "util"
 )
 
-func formatTimeEncoder(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
-	enc.AppendString(t.Format(commons.TIME_FORMAT))
+// default option values
+const (
+	DEFAULT_LOG_LEVEL        = LEVEL_INFO
+	DEFAULT_MAX_SIZE_BYTES   = 10 * (1 << 20) // 10 MB
+	DEFAULT_INTERVAL_SECONDS = 30
+)
+
+// NODE: supported loggers
+var (
+	Logger     yaslog.YasLog
+	Controller yaslog.YasLog
+	Handler    yaslog.YasLog
+	Module     yaslog.YasLog
+	Yasql      yaslog.YasLog
+	Execer     yaslog.YasLog
+	Util       yaslog.YasLog
+	// TODO: more loggers
+)
+
+var _levelMap = map[string]yaslog.LogLevel{
+	LEVEL_DEBUG:   yaslog.DEBUG,
+	LEVEL_NOTICE:  yaslog.NOTICE,
+	LEVEL_INFO:    yaslog.INFO,
+	LEVEL_WARNING: yaslog.WARNING,
+	LEVEL_ERROR:   yaslog.ERROR,
+	LEVEL_FATAL:   yaslog.FATAL,
 }
 
-func getEncoderConfig() zapcore.EncoderConfig {
-	cfg := zap.NewDevelopmentEncoderConfig()
-	cfg.EncodeTime = formatTimeEncoder
-	return cfg
+type Option struct {
+	dir             string
+	level           string
+	maxSizeBytes    int64 // when the current log file size reaches <maxSizeBytes>, switch to another log file
+	intervalSeconds int   // check the current log file size every <intervalSeconds>
+	console         bool  // whether to print logs in the terminal
 }
 
-func atomLevel(level string) zap.AtomicLevel {
-	atomicLevel := zap.NewAtomicLevel()
-	if err := atomicLevel.UnmarshalText([]byte(level)); err != nil {
-		fmt.Printf("zap atom unmarshal err: %s", err.Error())
-	}
-	return atomicLevel
-}
-func getCore(servername string, console bool) zapcore.Core {
-	hook := getFsHook(servername)
-	syncers := []zapcore.WriteSyncer{zapcore.AddSync(&hook)}
-	if console {
-		// 打印到控制台
-		syncers = append(syncers, zapcore.AddSync(os.Stdout))
-	}
-	return zapcore.NewCore(
-		zapcore.NewConsoleEncoder(getEncoderConfig()), // 编码器配置
-		zapcore.NewMultiWriteSyncer(syncers...),
-		atomLevel(_default_level), // 日志级别
-	)
-}
-
-func getLogger(servername string, console bool) *zap.Logger {
-	//// 构造日志
-
-	return zap.New(getCore(servername, console), zap.AddCaller(), zap.Development())
-}
-
-func createLogPath(logPath string) {
-	if err := fs.Mkdir(logPath); err != nil {
-		fmt.Printf("mkdir %s err: %s", logPath, err.Error())
-	}
-}
-
-func getFsHook(servername string) lumberjack.Logger {
-	logPath := path.Join(runtimedef.GetHome(), "log")
-	createLogPath(logPath)
-	logFile := path.Join(logPath, fmt.Sprintf("%s.log", servername))
-	return lumberjack.Logger{
-		Filename:   logFile, // 日志文件路径
-		MaxSize:    10,      // 每个日志文件保存的最大尺寸 单位：M
-		MaxBackups: 2,       // 日志文件最多保存多少个备份
-		MaxAge:     7,       // 文件最多保存多少天
-		Compress:   true,    // 是否压缩
+func (opt *Option) set(funcs []OptFunc) {
+	for _, f := range funcs {
+		f(opt)
 	}
 }
 
-func InitLog() {
-	LoadConsoleLogger()
-	LoadErrorLogger()
+type OptFunc func(*Option)
+
+func SetLevel(level string) OptFunc {
+	return func(opt *Option) { opt.level = level }
+}
+
+func SetMaxSize(sizeBytes int64) OptFunc {
+	return func(opt *Option) { opt.maxSizeBytes = sizeBytes }
+}
+
+func SetInterval(intervalSeconds int) OptFunc {
+	return func(opt *Option) { opt.intervalSeconds = intervalSeconds }
+}
+
+func SetLogPath(logPath string) OptFunc {
+	return func(opt *Option) { opt.dir = logPath }
+}
+
+func SetConsole(v bool) OptFunc {
+	return func(opt *Option) { opt.console = v }
+}
+
+func DefaultLogOption() *Option {
+	return &Option{
+		level:           DEFAULT_LOG_LEVEL,
+		maxSizeBytes:    DEFAULT_MAX_SIZE_BYTES,
+		intervalSeconds: DEFAULT_INTERVAL_SECONDS,
+	}
+}
+
+func NewLogOption(funcs ...OptFunc) *Option {
+	opt := DefaultLogOption()
+	opt.set(funcs)
+	return opt
+}
+
+func InitLogger(servername string, opt *Option) error {
+	fname := path.Join(opt.dir, fmt.Sprintf("%s.log", servername))
+	if err := prepare(opt.dir, fname); err != nil {
+		fmt.Println(err)
+	}
+	logger := yaslog.NewRotateLogger(fname, servername, opt.toYaslogOptions())
+	Logger = logger
+	Controller = logger.NewModule(_LOG_MODULE_CONTROLLER)
+	Handler = logger.NewModule(_LOG_MODULE_HANDLER)
+	Module = logger.NewModule(_LOG_MODULE_MODULE)
+	Yasql = logger.NewModule(_LOG_MODULE_YASQL)
+	Util = logger.NewModule(_LOG_MODULE_UTIL)
+	logger.Infof("VERSION: %s", compiledef.GetAPPVersion())
+	return nil
+}
+
+// create log path and log file
+func prepare(logPath, fname string) error {
+	owner := runtimedef.GetExecuteableOwner()
+	if !fs.IsDirExist(logPath) {
+		if err := fs.Mkdir(logPath); err != nil {
+			return err
+		}
+	}
+	if !fs.IsFileExist(fname) {
+		if err := fileutil.WriteFile(fname, nil); err != nil {
+			return err
+		}
+	}
+	if userutil.IsCurrentUserRoot() && (owner.Uid != 0 || owner.Gid != 0) {
+		_ = os.Chown(logPath, owner.Uid, owner.Gid)
+		_ = os.Chown(fname, owner.Uid, owner.Gid)
+	}
+	return nil
+}
+
+func (opt *Option) toYaslogOptions() *yaslog.LogOption {
+	var optFuncs []yaslog.LogOptFunc
+	level, ok := _levelMap[strings.ToUpper(opt.level)]
+	if !ok {
+		level = yaslog.INFO
+	}
+	optFuncs = append(optFuncs, yaslog.SetFlag(yaslog.Ldate|yaslog.Ltime|yaslog.Lmidfile))
+	optFuncs = append(optFuncs, yaslog.SetLevel(level))
+	optFuncs = append(optFuncs, yaslog.SetFileSize(opt.maxSizeBytes))
+	optFuncs = append(optFuncs, yaslog.SetInterval(opt.intervalSeconds))
+	optFuncs = append(optFuncs, yaslog.SetConsole(opt.console))
+	return yaslog.NewLogOption(optFuncs...)
 }
