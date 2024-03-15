@@ -1,0 +1,21 @@
+log_level = "debug"
+[mysql]
+host="192.168.8.236"
+port=3306
+database="yashan"    
+username="root"
+password="123456"
+#tables=["test_key_word"]
+schemas=["yashan"]
+exclude_tables=["data"]
+#parallel=1
+#parallel_per_table=1
+#batchSize=1000
+#query="where create_date < '2022-01-11 00:00:00'"
+
+[yashandb]
+host="192.168.8.246"
+port=1688
+username="sys"
+password="yasdb_123"
+remap_schemas=["SYS"]

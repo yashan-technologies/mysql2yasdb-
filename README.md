@@ -38,18 +38,28 @@ libzstd.so.1
 
 ```shell
 全局选项:
--h, --help     显示帮助信息
--v, --version  显示程序版本号
--c, --config   指定DB配置信息文件
--d, --data     仅同步表数据,此参数开启时,不生成ddl文件
-●用法示例1:     直接执行,使用当前目录下的db.ini配置文件获取程序运行时的配置信息,导出对象ddl,ddl导出文件分被位于tables_ddl,others_ddl
-./mysql2yasdb 
+Usage: mysql2yasdb <command> [flags]
 
-●用法示例2:     使用自定义配置文件xxx.ini,导出对象ddl
-./mysql2yasdb -c xxx.toml   或 ./mysql2yasdb --config=xxx.toml
+mysql2yasdb is a tool for synchronizing data from MySQL to YashanDB.
 
-●用法示例3:     使用当前目录下的db.toml配置文件,并进行表数据的同步,但不生成ddl文件
-./mysql2yasdb -d
+Flags:
+  -h, --help                          Show context-sensitive help.
+  -v, --version                       Show version.
+  -c, --config="./config/m2y.toml"    Configuration file.
+
+Commands:
+  sync      Sync data from MySQL to YashanDB.
+
+  export    Export DDLs from MySQL.
+
+Run "mysql2yasdb <command> --help" for more information on a command.
+
+●用法示例1:     使用export命令导出DDL语句
+./mysql2yasdb export
+
+●用法示例2:     使用sync命令同步数据
+./mysql2yasdb sync
+
 ```
 
 ### 4、配置文件说明：mysql2yasdb解压目录下db.ini文件为工具参数配置文件，其中参数说明如下
