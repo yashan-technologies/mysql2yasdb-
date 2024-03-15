@@ -31,8 +31,7 @@ func main() {
 	defer finalize()
 	std.WriteToFile(fmt.Sprintf("execute: %s %s\n", _APP_NAME, strings.Join(ctx.Args, " ")))
 	if err := ctx.Run(); err != nil {
-		log.Logger.Error(err)
-		fmt.Println(yaserr.Unwrap(err))
+		log.Logger.Error(yaserr.Unwrap(err))
 	}
 }
 

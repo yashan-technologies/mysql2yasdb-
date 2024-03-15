@@ -34,6 +34,10 @@ func LoadMysqlDB(mysql *confdef.MysqlConfig) (err error) {
 		err = fmt.Errorf("连接mysql时出错: %s", err.Error())
 		return
 	}
+	if err = mysqlDB.Ping(); err != nil {
+		err = fmt.Errorf("连接mysql时出错: %s", err.Error())
+		return
+	}
 	MysqlDB = mysqlDB
 	err = queryVersion()
 	return
@@ -43,7 +47,12 @@ func LoadYashanDB(yashan *confdef.YashanConfig) (err error) {
 	yasdbDsn := fmt.Sprintf("%s/%s@%s:%d", yashan.UserName, formatPassword(yashan.Password), yashan.Host, yashan.Port)
 	yasDB, err := sql.Open(driver_yashandb, yasdbDsn)
 	if err != nil {
-		err = fmt.Errorf("连接yashandb时出错: %s", err.Error())
+		err = fmt.Errorf("连接yashandb时出错: %s, 请检查配置文件或环境变量", err.Error())
+		return
+	}
+	if err = yasDB.Ping(); err != nil {
+		err = fmt.Errorf("连接yashandb时出错: %s, 请检查配置文件或环境变量", err.Error())
+		return
 	}
 	yasDB.SetMaxOpenConns(100)
 	yasDB.SetMaxIdleConns(50)

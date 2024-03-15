@@ -38,7 +38,7 @@ func DealTableData(mysql, yasdb *sql.DB, mysqlSchema, yasdbSchema string, alltab
 	semaphore := make(chan bool, parallel)
 	// 创建一个等待组，用于等待所有goroutine完成
 	var wg sync.WaitGroup
-	log.Module.Infof("开始同步mysql中表数据到yashandb......")
+	log.Logger.Infof("开始同步mysql中表数据到yashandb......")
 	for i := 0; i < taskCount; i++ {
 		wg.Add(1)
 		// 在每次循环开始前获取一个信号量
@@ -54,7 +54,7 @@ func DealTableData(mysql, yasdb *sql.DB, mysqlSchema, yasdbSchema string, alltab
 	// 等待所有goroutine完成
 	wg.Wait()
 	elapsed := time.Since(start) // 计算经过的时间
-	log.Module.Infof("任务完成, 共耗时: %v\n", elapsed)
+	log.Logger.Infof("任务完成, 共耗时: %v\n", elapsed)
 	return nil
 }
 
@@ -67,7 +67,7 @@ func DealSchemasData(mysql, yasdb *sql.DB, mysqlSchemas, yasdbSchemas []string, 
 	sts := []schemaTable{}
 	for i, schema := range mysqlSchemas {
 		if !inArrayStr(schema, mysqDbs) {
-			log.Module.Infof("schema%s不存在, 请检查配置文件或mysql环境信息", schema)
+			log.Logger.Infof("schema%s不存在, 请检查配置文件或mysql环境信息", schema)
 			continue
 		}
 		tables, err := getMysqlSchemaTables(mysql, schema)
@@ -87,7 +87,7 @@ func DealSchemasData(mysql, yasdb *sql.DB, mysqlSchemas, yasdbSchemas []string, 
 	semaphore := make(chan bool, parallel)
 	// 创建一个等待组，用于等待所有goroutine完成
 	var wg sync.WaitGroup
-	log.Module.Infof("开始同步mysql数据到yashandb......")
+	log.Logger.Infof("开始同步mysql数据到yashandb......")
 	for i := 0; i < taskCount; i++ {
 		wg.Add(1)
 		// 在每次循环开始前获取一个信号量
@@ -103,7 +103,7 @@ func DealSchemasData(mysql, yasdb *sql.DB, mysqlSchemas, yasdbSchemas []string, 
 	// 等待所有goroutine完成
 	wg.Wait()
 	elapsed := time.Since(start) // 计算经过的时间
-	log.Module.Infof("数据同步任务完成, 共耗时: %v", elapsed)
+	log.Logger.Infof("数据同步任务完成, 共耗时: %v", elapsed)
 	return nil
 }
 
@@ -113,12 +113,12 @@ func syncTableDataFromMysqlToYasdb(mysql, yasdb *sql.DB, mysqlSchema, yasdbSchem
 	// 查询总记录数
 	count, err := getMysqlTableCount(mysql, mysqlSchema, mysqlTable)
 	if err != nil {
-		log.Module.Errorf("表 %s.%s 同步失败, 获取mysql端表数据失败: %v", mysqlSchema, mysqlTable, err)
+		log.Logger.Errorf("表 %s.%s 同步失败, 获取mysql端表数据失败: %v", mysqlSchema, mysqlTable, err)
 		return
 	}
 	yasdbColumns, err := getYasdbColumns(yasdb, yasdbSchema, yasdbTable)
 	if err != nil {
-		log.Module.Errorf("表 %s.%s 同步失败, 获取yashandb端表结构失败: %v", mysqlSchema, mysqlTable, err)
+		log.Logger.Errorf("表 %s.%s 同步失败, 获取yashandb端表结构失败: %v", mysqlSchema, mysqlTable, err)
 		return
 	}
 	//设置当前表并行度
@@ -132,7 +132,7 @@ func syncTableDataFromMysqlToYasdb(mysql, yasdb *sql.DB, mysqlSchema, yasdbSchem
 	}
 	// 记录开始时间
 	start := time.Now()
-	log.Module.Infof("开始同步mysql表 %s.%s", mysqlSchema, mysqlTable)
+	log.Logger.Infof("开始同步mysql表 %s.%s", mysqlSchema, mysqlTable)
 	// 创建一个带有缓冲区的通道，用于控制并发数量
 	semaphore := make(chan bool, tableParallel)
 	// 创建一个等待组，用于等待所有goroutine完成
@@ -154,7 +154,7 @@ func syncTableDataFromMysqlToYasdb(mysql, yasdb *sql.DB, mysqlSchema, yasdbSchem
 	// 等待所有goroutine完成
 	wg.Wait()
 	elapsed := time.Since(start) // 计算经过的时间
-	log.Module.Infof("表 %s.%s 同步完成, 迁移数据量: %d 耗时 %v\n", mysqlSchema, mysqlTable, totalCount, elapsed)
+	log.Logger.Infof("表 %s.%s 同步完成, 迁移数据量: %d 耗时 %v\n", mysqlSchema, mysqlTable, totalCount, elapsed)
 }
 
 func getYasdbColumns(yasdb *sql.DB, yasdbSchema, yasdbTable string) ([]ColumnInfo, error) {
@@ -193,10 +193,10 @@ func getYasdbColumns(yasdb *sql.DB, yasdbSchema, yasdbTable string) ([]ColumnInf
 func syncTableDataFromMysqlToYasdbParallel(mysdb, yasdb *sql.DB, mysqlSchema, yasdbSchema, mysqlTable, yasdbTable string, yasdbColumns []ColumnInfo, limit, offset, batchSize int) int {
 	count, err := getMysqlTableCount(mysdb, mysqlSchema, mysqlTable, withLimit(limit, offset))
 	if err != nil {
-		log.Module.Errorf("表 %s.%s 同步失败, 获取mysql端表数据失败: %v", mysqlSchema, mysqlTable, err)
+		log.Logger.Errorf("表 %s.%s 同步失败, 获取mysql端表数据失败: %v", mysqlSchema, mysqlTable, err)
 		return 0
 	}
-	log.Module.Infof("表 %s.%s 源端数据量为: %d行", mysqlSchema, mysqlTable, count)
+	log.Logger.Infof("表 %s.%s 源端数据量为: %d行", mysqlSchema, mysqlTable, count)
 	if count == 0 {
 		return 0
 	}
@@ -205,13 +205,13 @@ func syncTableDataFromMysqlToYasdbParallel(mysdb, yasdb *sql.DB, mysqlSchema, ya
 	// 开始事务
 	targetTx, err := yasdb.Begin()
 	if err != nil {
-		log.Module.Errorf("表 %s.%s 同步失败, 事务开始失败: %v", mysqlSchema, mysqlTable, err)
+		log.Logger.Errorf("表 %s.%s 同步失败, 事务开始失败: %v", mysqlSchema, mysqlTable, err)
 		return 0
 	}
 	// 查询源表数据
 	rows, err := mysdb.Query(fmt.Sprintf(sqldef.M_SQL_QUERY_TABLE_DATA, mysqlSchema, mysqlTable, limit, offset))
 	if err != nil {
-		log.Module.Errorf("表 %s.%s 同步失败, 源端数据查询失败: %v", mysqlSchema, mysqlTable, err)
+		log.Logger.Errorf("表 %s.%s 同步失败, 源端数据查询失败: %v", mysqlSchema, mysqlTable, err)
 		return 0
 	}
 	defer rows.Close()
@@ -220,7 +220,7 @@ func syncTableDataFromMysqlToYasdbParallel(mysdb, yasdb *sql.DB, mysqlSchema, ya
 	columns := []ColumnInfo{}
 	columnTypes, err := rows.ColumnTypes()
 	if err != nil {
-		log.Module.Errorf("表 %s.%s 同步失败, 源端数据列信息获取失败: %v", mysqlSchema, mysqlTable, err)
+		log.Logger.Errorf("表 %s.%s 同步失败, 源端数据列信息获取失败: %v", mysqlSchema, mysqlTable, err)
 		return 0
 	}
 	for _, columnType := range columnTypes {
@@ -239,7 +239,7 @@ func syncTableDataFromMysqlToYasdbParallel(mysdb, yasdb *sql.DB, mysqlSchema, ya
 		}
 		err := rows.Scan(valuePointers...)
 		if err != nil {
-			log.Module.Errorf("表 %s.%s 同步失败, 源端数据查询失败: %v", mysqlSchema, mysqlTable, err)
+			log.Logger.Errorf("表 %s.%s 同步失败, 源端数据查询失败: %v", mysqlSchema, mysqlTable, err)
 			break
 		}
 		yashanValues := make([]interface{}, len(values))
@@ -251,7 +251,7 @@ func syncTableDataFromMysqlToYasdbParallel(mysdb, yasdb *sql.DB, mysqlSchema, ya
 		yashanInsertSQL := buildYashanInsertSQL(yasdbSchema, yasdbTable, yasdbColumns)
 		_, err = targetTx.Exec(yashanInsertSQL, yashanValues...)
 		if err != nil {
-			log.Module.Errorf("表 %s.%s 同步失败, 目标端数据插入失败: %v", mysqlSchema, mysqlTable, err)
+			log.Logger.Errorf("表 %s.%s 同步失败, 目标端数据插入失败, sql: %s value: %v, err: %v", mysqlSchema, mysqlTable, yashanInsertSQL, yashanValues, err)
 			continue
 		}
 		// 计数器递增
@@ -261,7 +261,7 @@ func syncTableDataFromMysqlToYasdbParallel(mysdb, yasdb *sql.DB, mysqlSchema, ya
 		if batchCount >= batchSize {
 			err = targetTx.Commit()
 			if err != nil {
-				log.Module.Errorf("表 %s.%s 同步失败, 事务提交失败: %v", mysqlSchema, mysqlTable, err)
+				log.Logger.Errorf("表 %s.%s 同步失败, 事务提交失败: %v", mysqlSchema, mysqlTable, err)
 				break
 			}
 			// 重置计数器
@@ -269,7 +269,7 @@ func syncTableDataFromMysqlToYasdbParallel(mysdb, yasdb *sql.DB, mysqlSchema, ya
 			// 开始新的事务
 			targetTx, err = yasdb.Begin()
 			if err != nil {
-				log.Module.Errorf("表 %s.%s 同步失败, 事务开始失败: %v", mysqlSchema, mysqlTable, err)
+				log.Logger.Errorf("表 %s.%s 同步失败, 事务开始失败: %v", mysqlSchema, mysqlTable, err)
 				break
 			}
 		}
@@ -278,7 +278,7 @@ func syncTableDataFromMysqlToYasdbParallel(mysdb, yasdb *sql.DB, mysqlSchema, ya
 	if batchCount > 0 {
 		err = targetTx.Commit()
 		if err != nil {
-			log.Module.Errorf("表 %s.%s 同步失败, 事务开始失败: %v", mysqlSchema, mysqlTable, err)
+			log.Logger.Errorf("表 %s.%s 同步失败, 事务开始失败: %v", mysqlSchema, mysqlTable, err)
 			return resultCount
 		}
 	}

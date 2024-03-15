@@ -60,29 +60,29 @@ func DealTablesDDLs(mysql *sql.DB, mysqlSchema, yasdbSchema string, tables []str
 	for _, tableName := range tables {
 		tableDDLs, nullableStrs, err := getTableDDL(mysql, mysqlSchema, yasdbSchema, tableName)
 		if err != nil {
-			log.Module.Errorf("表 %s.%s DDL导出失败: %v", mysqlSchema, tableName, err)
+			log.Logger.Errorf("表 %s.%s DDL导出失败: %v", mysqlSchema, tableName, err)
 			continue
 		}
 		if _, err := tableFile.WriteString(strings.Join(tableDDLs, "\n")); err != nil {
-			log.Module.Errorf("表 %s.%s DDL导出失败: %v", mysqlSchema, tableName, err)
+			log.Logger.Errorf("表 %s.%s DDL导出失败: %v", mysqlSchema, tableName, err)
 			continue
 		}
 		tableComments, err := getTableComments(mysql, mysqlSchema, yasdbSchema, tableName)
 		if err != nil {
-			log.Module.Errorf("表 %s.%s 注释导出失败: %v", mysqlSchema, tableName, err)
+			log.Logger.Errorf("表 %s.%s 注释导出失败: %v", mysqlSchema, tableName, err)
 			continue
 		}
 		if _, err := tableFile.WriteString(strings.Join(tableComments, "\n")); err != nil {
-			log.Module.Errorf("表 %s.%s 注释导出失败: %v", mysqlSchema, tableName, err)
+			log.Logger.Errorf("表 %s.%s 注释导出失败: %v", mysqlSchema, tableName, err)
 			continue
 		}
 		nullableIdx := "\n--创建表的非空约束语句\n"
 		if _, err = idxFile.WriteString(nullableIdx); err != nil {
-			log.Module.Errorf("表 %s.%s 非空约束导出失败: %v", mysqlSchema, tableName, err)
+			log.Logger.Errorf("表 %s.%s 非空约束导出失败: %v", mysqlSchema, tableName, err)
 			continue
 		}
 		if _, err = idxFile.WriteString(strings.Join(nullableStrs, "\n")); err != nil {
-			log.Module.Errorf("表 %s.%s 非空约束导出失败: %v", mysqlSchema, tableName, err)
+			log.Logger.Errorf("表 %s.%s 非空约束导出失败: %v", mysqlSchema, tableName, err)
 			continue
 		}
 	}
@@ -94,29 +94,29 @@ func DealTablesDDLs(mysql *sql.DB, mysqlSchema, yasdbSchema string, tables []str
 	for _, tableName := range tables {
 		primarykeys, err := getPrimaryKeyDDLs(mysql, mysqlSchema, yasdbSchema, tableName)
 		if err != nil {
-			log.Module.Errorf("表 %s.%s 主键约束导出失败: %v", mysqlSchema, tableName, err)
+			log.Logger.Errorf("表 %s.%s 主键约束导出失败: %v", mysqlSchema, tableName, err)
 			continue
 		}
 		if _, err = idxFile.WriteString(strings.Join(primarykeys, "\n")); err != nil {
-			log.Module.Errorf("表 %s.%s 主键约束导出失败: %v", mysqlSchema, tableName, err)
+			log.Logger.Errorf("表 %s.%s 主键约束导出失败: %v", mysqlSchema, tableName, err)
 			continue
 		}
 		uniqIndexes, err := getUniqueIndexDDLs(mysql, mysqlSchema, yasdbSchema, tableName)
 		if err != nil {
-			log.Module.Errorf("表 %s.%s unique索引导出失败: %v", mysqlSchema, tableName, err)
+			log.Logger.Errorf("表 %s.%s unique索引导出失败: %v", mysqlSchema, tableName, err)
 			continue
 		}
 		if _, err = idxFile.WriteString(strings.Join(uniqIndexes, "\n")); err != nil {
-			log.Module.Errorf("表 %s.%s unique索引导出失败: %v", mysqlSchema, tableName, err)
+			log.Logger.Errorf("表 %s.%s unique索引导出失败: %v", mysqlSchema, tableName, err)
 			continue
 		}
 		nonUniqueIndexes, err := getNonUniqueIndexDDL(mysql, mysqlSchema, yasdbSchema, tableName)
 		if err != nil {
-			log.Module.Errorf("表 %s.%s non unique索引导出失败: %v", mysqlSchema, tableName, err)
+			log.Logger.Errorf("表 %s.%s non unique索引导出失败: %v", mysqlSchema, tableName, err)
 			continue
 		}
 		if _, err = idxFile.WriteString(strings.Join(nonUniqueIndexes, "\n")); err != nil {
-			log.Module.Errorf("表 %s.%s non unique索引导出失败: %v", mysqlSchema, tableName, err)
+			log.Logger.Errorf("表 %s.%s non unique索引导出失败: %v", mysqlSchema, tableName, err)
 			continue
 		}
 	}
@@ -127,11 +127,11 @@ func DealTablesDDLs(mysql *sql.DB, mysqlSchema, yasdbSchema string, tables []str
 	for _, tableName := range tables {
 		constraints, err := getTableForeignKeys(mysql, mysqlSchema, yasdbSchema, tableName)
 		if err != nil {
-			log.Module.Errorf("表 %s.%s 外键约束导出失败: %v", mysqlSchema, tableName, err)
+			log.Logger.Errorf("表 %s.%s 外键约束导出失败: %v", mysqlSchema, tableName, err)
 			continue
 		}
 		if _, err = idxFile.WriteString(strings.Join(constraints, "\n")); err != nil {
-			log.Module.Errorf("表 %s.%s 外键约束导出失败: %v", mysqlSchema, tableName, err)
+			log.Logger.Errorf("表 %s.%s 外键约束导出失败: %v", mysqlSchema, tableName, err)
 			continue
 		}
 	}
@@ -160,17 +160,17 @@ func DealSchemasDDL(mysqlDB *sql.DB, schemas, remapSchemas []string, excludeTabl
 	if err != nil {
 		return err
 	}
-	log.Module.Infof("开始导出DDL......")
+	log.Logger.Infof("开始导出DDL......")
 	start := time.Now()
 	for i, schema := range schemas {
 		if !inArrayStr(schema, mysqlDbs) {
-			log.Module.Errorf("mysql database %s 不存在, 请检查配置文件或mysql环境\n", schema)
+			log.Logger.Errorf("mysql database %s 不存在, 请检查配置文件或mysql环境\n", schema)
 			continue
 		}
 		var tables []string
 		allTables, err := getMysqlSchemaTables(mysqlDB, schema)
 		if err != nil {
-			log.Module.Errorf("获取schema %s 中的表失败: %v", schema, err)
+			log.Logger.Errorf("获取schema %s 中的表失败: %v", schema, err)
 			continue
 		}
 		for _, table := range allTables {
@@ -179,11 +179,11 @@ func DealSchemasDDL(mysqlDB *sql.DB, schemas, remapSchemas []string, excludeTabl
 			}
 		}
 		if err := DealTablesDDLs(mysqlDB, schema, remapSchemas[i], tables, true); err != nil {
-			log.Module.Errorf("schema %s DDL导出失败: %v", schema, err)
+			log.Logger.Errorf("schema %s DDL导出失败: %v", schema, err)
 			continue
 		}
 	}
-	log.Module.Infof("任务完成，耗时: %v, 结果保存在: %s", time.Since(start), runtimedef.GetExportPath())
+	log.Logger.Infof("任务完成，耗时: %v, 结果保存在: %s", time.Since(start), runtimedef.GetExportPath())
 	return nil
 }
 
