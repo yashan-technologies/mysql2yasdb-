@@ -137,7 +137,7 @@ func syncTableDataFromMysqlToYasdb(mysql, yasdb *sql.DB, mysqlSchema, yasdbSchem
 	semaphore := make(chan bool, tableParallel)
 	// 创建一个等待组，用于等待所有goroutine完成
 	var wg sync.WaitGroup
-	for i := 0; i < tableParallel; i++ {
+	for i := 0; i < tableParallel && i*limit <= count; i++ {
 		wg.Add(1)
 		// 分批读取数据
 		offset := i * limit
@@ -196,7 +196,6 @@ func syncTableDataFromMysqlToYasdbParallel(mysdb, yasdb *sql.DB, mysqlSchema, ya
 		log.Logger.Errorf("表 %s.%s 同步失败, 获取mysql端表数据失败: %v", mysqlSchema, mysqlTable, err)
 		return 0
 	}
-	log.Logger.Infof("表 %s.%s 源端数据量为: %d行", mysqlSchema, mysqlTable, count)
 	if count == 0 {
 		return 0
 	}
