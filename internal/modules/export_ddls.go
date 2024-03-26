@@ -538,8 +538,12 @@ func getViewDDLs(db *sql.DB, mysqlSchema, yasdbSchema string) ([]string, error) 
 		if err := rows.Scan(&viewName, &viewDDL); err != nil {
 			return nil, err
 		}
-		viewDDL = strings.ReplaceAll(viewDDL, "`", "")
+		viewDDL = strings.ReplaceAll(viewDDL, "`"+mysqlSchema+"`.", "")
 		viewDDL = strings.ReplaceAll(viewDDL, mysqlSchema+".", "")
+		viewDDL = strings.ReplaceAll(viewDDL, "`", "\"")
+		if len(strings.TrimSpace(viewDDL)) != 0 {
+			continue
+		}
 		viewDDL = fmt.Sprintf(sqldef.Y_SQL_CREATE_VIEW, yasdbSchema, viewName, viewDDL)
 		viewDDLs = append(viewDDLs, viewDDL)
 	}
