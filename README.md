@@ -90,7 +90,7 @@ schemas=["db1","db2","db3"]                 #需迁移的databases的名称，�
 host="192.168.3.180"                        #YahsanDB主机IP地址
 port=1688                                   #YashanDB访问端口
 username="yashan"                           #YashanDB访问用户名，按表导入时，导入到此用户下
-password="yashan123"                        #YashanDB访问用户密码
+password="yashan123"                        #YashanDB访问用户密码，建议密码串用双引号引起来，避免复杂密码识别有误
 remap_schemas=["yashan","yashan","yashan"]  #迁移至YashanDB的目标用户名称，当和参数schemas一起配置时，它的值需要和参数schemas的值一一对应，schemas第N个值对应到remap_schemas第N个值。当和tables一起配置时，只取remap_schemas的第一个值
 ```
 
