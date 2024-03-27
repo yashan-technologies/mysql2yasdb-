@@ -12,8 +12,8 @@ const (
     SELECT table_comment
     FROM information_schema.tables
     WHERE table_schema = ? AND table_name = ? and table_type = 'BASE TABLE'`
-	M_SQL_QUERY_MAX_ID      = "SELECT ifnull(max(%s),0)+1 FROM %s.%s"
-	M_SQL_SHOW_INDEX        = "SHOW INDEXES FROM %s.`%s`"
+	M_SQL_QUERY_MAX_ID      = "SELECT ifnull(max(%s),0)+1 FROM `%s`.`%s`"
+	M_SQL_SHOW_INDEX        = "SHOW INDEXES FROM `%s`.`%s`"
 	M_SQL_SHOW_DATABASES    = "SHOW DATABASES"
 	M_SQL_QUERY_FOREIGN_KEY = `
 	SELECT
@@ -32,8 +32,8 @@ const (
     from information_schema.TABLES 
     where table_schema=? and table_type = 'BASE TABLE';`
 	M_SQL_QUERY_VIEW           = "SELECT TABLE_NAME,VIEW_DEFINITION FROM INFORMATION_SCHEMA.VIEWS WHERE TABLE_SCHEMA = '%s'"
-	M_SQL_QUERY_TABLE_COUNT    = "SELECT COUNT(*) FROM %s.%s "
-	M_SQL_QUERY_TABLE_DATA     = "SELECT * FROM %s.%s LIMIT %d OFFSET %d"
+	M_SQL_QUERY_TABLE_COUNT    = "SELECT COUNT(*) FROM `%s`.`%s` "
+	M_SQL_QUERY_TABLE_DATA     = "SELECT * FROM `%s`.`%s` LIMIT %d OFFSET %d"
 	M_SQL_QUERY_AUTO_INCREMENT = `SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND EXTRA = 'auto_increment'`
 )
 
