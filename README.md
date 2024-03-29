@@ -25,7 +25,7 @@ export PATH=$PATH:$MYSQL2YASDB_HOME
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$MYSQL2YASDB_HOME/lib ${MYSQL2YASDB_HOME}为工具包解压后的根目录
 ```
 
-​工具依赖于如下lib包，如果工具运行过程中报lib包相关错误，可使用与目标库YashanDB版本匹配的lib文件进行替换。
+工具依赖于如下lib包，如果工具运行过程中报lib包相关错误，可使用与目标库YashanDB版本匹配的lib文件进行替换。
 
 ```linux
 libyascli.so
@@ -37,7 +37,6 @@ libzstd.so.1
 ### 3、工具使用帮助：安装包解压后，执行命令./mysql2yasdb -h可获取使用帮助，使用帮助示例如下
 
 ```shell
-全局选项:
 Usage: mysql2yasdb <command> [flags]
 
 mysql2yasdb is a tool for synchronizing data from MySQL to YashanDB.
@@ -53,18 +52,25 @@ Commands:
   export    Export DDLs from MySQL.
 
 Run "mysql2yasdb <command> --help" for more information on a command.
-
-●用法示例1:     使用export命令导出DDL语句
-./mysql2yasdb export
-
-●用法示例2:     使用sync命令同步数据
-./mysql2yasdb sync
-
 ```
 
-### 4、配置文件说明：mysql2yasdb解压目录下db.ini文件为工具参数配置文件，其中参数说明如下
+- `-h`参数显示工具帮助信息
+- `-v`参数显示工具版本信息
+- `-c`参数指定工具配置文件，默认配置文件为`{M2Y_HOME}/config/m2y.toml`
+
+
+
+mysql2yasdb工具有两条子命令：
+
+- `export`命令用于导出Mysql数据库的DDL到`{M2Y_HOME}/export`目录下
+- `sync`命令用于直接将Mysql数据库的指定表的数据导入到YashanDB数据库中
+
+`export`和`sync`子命令的数据库连接信息和表信息均由工具配置文件指定
+
+### 4、配置文件说明：{M2Y_HOME}/config/m2y.toml文件为工具参数配置文件，其中参数说明如下
 
 ```ini
+log_level = "debug"							#工具的日志级别
 [mysql]
 host="192.168.3.180"                        #mysql主机IP地址
 port=3306                                   #mysql访问端口
@@ -84,8 +90,33 @@ schemas=["db1","db2","db3"]                 #需迁移的databases的名称，�
 host="192.168.3.180"                        #YahsanDB主机IP地址
 port=1688                                   #YashanDB访问端口
 username="yashan"                           #YashanDB访问用户名，按表导入时，导入到此用户下
-password="yashan123"                        #YashanDB访问用户密码
-remap_schemas=["yashan","yashan","yashan"]  #迁移至YashanDB的目标用户名称，当和参数schemas一起配置时，它的值需要和参数schemas的值一一对应，schemas第N个值对应到remap_schemas第N个值。当和tables一起配置时，只取remap_schemas的第一个值, 当想要将yashandb用户定义为小写的时候需要时用反引号包裹, e.g:`"user1","user2"`
-
-
+password="yashan123"                        #YashanDB访问用户密码，建议密码串用双引号引起来，避免复杂密码识别有误
+remap_schemas=["yashan","yashan","yashan"]  #迁移至YashanDB的目标用户名称，当和参数schemas一起配置时，它的值需要和参数schemas的值一一对应，schemas第N个值对应到remap_schemas第N个值。当和tables一起配置时，只取remap_schemas的第一个值
 ```
+
+### 5、最佳实践
+
+#### 前置准备：
+
+- 一个需要导出数据的Mysql数据库
+- 一个用于导入数据的YashanDB数据库
+
+#### 导出Mysql数据库指定表的DDL：
+
+1. 编辑mysql2yasdb工具配置文件，使用满足工具要求的用户连接数据库，并指定要导出DDL的schema或表格
+2. 执行 `./mysql2yasdb export`命令导出DDL
+
+#### YashanDB数据库建表：
+
+1. 使用前置过程中导出的DDL在YashanDB数据库中创建表、索引、约束等
+
+>直接使用导出的DDL在YashanDB数据库中执行可能会报错。
+>
+>使用`yasql ***/***  -f -e  table_ddl.sql > table_ddl.log`命令可以查看建表语句中具体报错内容，如有报错需要手动修改DDL后重新执行。
+
+#### 同步数据到YashanDB数据库：
+
+1. 需要修改配置文件，指定需要导出的YashanDB数据库的连接信息和导出的Schema名，如果前置过程中已经指定，无需重复指定
+2. 执行 `./mysql2yasdb sync`命令同步数据到YashanDB数据库。
+
+>同步过程中会在终端打印同步过程，如有报错信息，需要在同步完成后根据报错信息定位错误原因并重新同步失败的表数据
