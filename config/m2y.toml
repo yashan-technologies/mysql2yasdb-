@@ -12,6 +12,9 @@ exclude_tables=["data"]
 #parallel_per_table=1
 #batch_size=1000
 #query="where create_date < '2022-01-11 00:00:00'"
+sample_lines=1000
+#rows_only=true
+#no_check_null_string=true
 
 [yashandb]
 host="192.168.8.246"
