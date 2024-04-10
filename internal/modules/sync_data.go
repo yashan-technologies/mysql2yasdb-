@@ -25,12 +25,6 @@ type schemaTable struct {
 	table       string
 }
 
-func withLimit(limit, offset int) queryFunc {
-	return func(s string) string {
-		return s + fmt.Sprintf("limit %d offset %d", limit, offset)
-	}
-}
-
 func DealTableData(mysql, yasdb *sql.DB, mysqlSchema, yasdbSchema string, alltables []string, parallel, tableParallel, batchSize int) error {
 	taskCount := len(alltables)
 	start := time.Now() // 记录开始时间
@@ -128,7 +122,7 @@ func syncTableDataFromMysqlToYasdb(mysql, yasdb *sql.DB, mysqlSchema, yasdbSchem
 		tableParallel = 1
 		limit = 1000
 	} else {
-		limit = count / tableParallel
+		limit = count/tableParallel + 1
 	}
 	// 记录开始时间
 	start := time.Now()
@@ -191,14 +185,6 @@ func getYasdbColumns(yasdb *sql.DB, yasdbSchema, yasdbTable string) ([]ColumnInf
 }
 
 func syncTableDataFromMysqlToYasdbParallel(mysdb, yasdb *sql.DB, mysqlSchema, yasdbSchema, mysqlTable, yasdbTable string, yasdbColumns []ColumnInfo, limit, offset, batchSize int) int {
-	count, err := getMysqlTableCount(mysdb, mysqlSchema, mysqlTable, withLimit(limit, offset))
-	if err != nil {
-		log.Logger.Errorf("表 %s.%s 同步失败, 获取mysql端表数据失败: %v", mysqlSchema, mysqlTable, err)
-		return 0
-	}
-	if count == 0 {
-		return 0
-	}
 	var resultCount int
 	var batchCount int
 	// 开始事务

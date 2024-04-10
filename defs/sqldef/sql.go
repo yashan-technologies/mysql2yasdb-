@@ -35,9 +35,17 @@ const (
 	M_SQL_QUERY_TABLE_COUNT    = "SELECT COUNT(*) FROM `%s`.`%s` "
 	M_SQL_QUERY_TABLE_DATA     = "SELECT * FROM `%s`.`%s` LIMIT %d OFFSET %d"
 	M_SQL_QUERY_AUTO_INCREMENT = `SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND EXTRA = 'auto_increment'`
+	M_SQL_QUERY_PRIMARY_KEY    = `
+    SELECT COLUMN_NAME, DATA_TYPE
+    FROM INFORMATION_SCHEMA.COLUMNS
+    WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND COLUMN_KEY = 'PRI'`
+	M_SQL_QUERY_TABLE_ALL_DATA   = "SELECT * FROM `%s`.`%s`"
+	M_SQL_QUERY_ORDER_RAND_LIMIT = "%s order by rand() limit %d"
 )
 
 const (
+	Y_SQL_QUERY_TABLE_COUNT               = "SELECT COUNT(*) FROM \"%s\".\"%s\""
+	Y_SQL_QUERY_TABLE_ROW_DATA            = "SELECT * FROM \"%s\".\"%s\" WHERE %s"
 	Y_SQL_SET_DEFINE_OFF                  = "SET DEFINE OFF;\n"
 	Y_SQL_ALTER_COLUMN_NOT_NULL           = "ALTER TABLE \"%s\".\"%s\" modify \"%s\" NOT NULL;\n"
 	Y_SQL_COLUMN_STMT_FORMAT              = "\"%s\" %s%s"
