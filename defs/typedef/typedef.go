@@ -73,7 +73,7 @@ var (
 		M_SMALLINT:           Y_INTEGER,
 		M_MEDIUMINT:          Y_INTEGER,
 		M_INT:                Y_BIGINT,
-		M_BIGINT:             Y_NUMBER,
+		M_BIGINT:             Y_BIGINT,
 		M_DECIMAL:            Y_NUMBER,
 		M_FLOAT:              Y_FLOAT,
 		M_DOUBLE:             Y_DOUBLE,
