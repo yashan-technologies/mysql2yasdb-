@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"reflect"
 	"strconv"
 	"strings"
 	"sync"
@@ -162,10 +163,10 @@ func compareTables(mysqlDB, yashanDB *sql.DB, tables []schemaTable, parallel, sa
 			log.Logger.Infof("开始对比Mysql表 %s.%s 和YashanDB表 %s.%s ...\n", mysqlSchema, tableName, yasdbSchema, tableName)
 			// 记录开始时间
 			start := time.Now()
-			fmt.Printf("开始对比Mysql表 %s.%s 和YashanDB表 %s.%s 总行数...\n", mysqlSchema, tableName, yasdbSchema, tableName)
+			log.Logger.Infof("开始对比Mysql表 %s.%s 和YashanDB表 %s.%s 总行数...\n", mysqlSchema, tableName, yasdbSchema, tableName)
 			result, err := compareTableCount(mysqlDB, yashanDB, mysqlSchema, yasdbSchema, tableName)
 			if err != nil {
-				fmt.Printf("Mysql表 %s.%s 和YashanDB表 %s.%s 总行数对比失败: %v\n", mysqlSchema, tableName, yasdbSchema, tableName, err)
+				log.Logger.Errorf("Mysql表 %s.%s 和YashanDB表 %s.%s 总行数对比失败: %v\n", mysqlSchema, tableName, yasdbSchema, tableName, err)
 				return
 			}
 			results = append(results, result)
@@ -356,7 +357,7 @@ func compareTableRowData(row1 tableData, row2 tableData, columnNames []string, t
 		// if !reflect.DeepEqual(value1, value2) {
 		if fmt.Sprintf("%v", value1) != strings.TrimSpace(fmt.Sprintf("%v", value2)) {
 			// fmt.Println(i, value1, value2, fmt.Sprintf("%T", value1), fmt.Sprintf("%T", value2))
-			log.Logger.Errorf("Mysql表 %s 字段 %s 主键值为 %s 的数据不一致, Mysql数据为: %v YashanDB数据为: %v\n", tableName, columnNames[i], row1.PkData, value1, value2)
+			log.Logger.Errorf("Mysql表 %s 字段 %s 主键值为 %v 的数据不一致, Mysql数据为: %v(%v) YashanDB数据为: %v(%v)\n", tableName, columnNames[i], row1.PkData, value1, reflect.TypeOf(value1), value2, reflect.TypeOf(value2))
 			return false
 		}
 	}
