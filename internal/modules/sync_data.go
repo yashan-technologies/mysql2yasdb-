@@ -317,6 +317,9 @@ func convertValueFromMysqlToYashan(value interface{}, columnType string) interfa
 		case "BIT":
 			return uint8SliceToInt(value.([]uint8))
 		default:
+			if str, ok := value.([]uint8); ok {
+				return string(str)
+			}
 			return value
 		}
 	} else {
