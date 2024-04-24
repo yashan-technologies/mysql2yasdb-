@@ -76,11 +76,6 @@ func DealTablesDDLs(mysql *sql.DB, mysqlSchema, yasdbSchema string, tables []str
 			log.Logger.Errorf("表 %s.%s 注释导出失败: %v", mysqlSchema, tableName, err)
 			continue
 		}
-		nullableIdx := "\n--创建表的非空约束语句\n"
-		if _, err = idxFile.WriteString(nullableIdx); err != nil {
-			log.Logger.Errorf("表 %s.%s 非空约束导出失败: %v", mysqlSchema, tableName, err)
-			continue
-		}
 		if _, err = idxFile.WriteString(strings.Join(nullableStrs, "\n")); err != nil {
 			log.Logger.Errorf("表 %s.%s 非空约束导出失败: %v", mysqlSchema, tableName, err)
 			continue
@@ -425,7 +420,7 @@ func getPrimaryKeyDDLs(mysql *sql.DB, mysqlSchema, yasdbSchema, tableName string
 	// 以索引名称分组索引列
 	indexMap := make(map[string][]string)
 	for _, index := range indexes {
-		if strings.ToUpper(index.KeyName) == "PRIMARY" { // 排除主键
+		if strings.ToUpper(index.KeyName) != "PRIMARY" { // 排除主键
 			continue
 		}
 		indexMap[index.KeyName] = append(indexMap[index.KeyName], index.ColumnName)
@@ -541,7 +536,7 @@ func getViewDDLs(db *sql.DB, mysqlSchema, yasdbSchema string) ([]string, error) 
 		viewDDL = strings.ReplaceAll(viewDDL, "`"+mysqlSchema+"`.", "")
 		viewDDL = strings.ReplaceAll(viewDDL, mysqlSchema+".", "")
 		viewDDL = strings.ReplaceAll(viewDDL, "`", "\"")
-		if len(strings.TrimSpace(viewDDL)) != 0 {
+		if len(strings.TrimSpace(viewDDL)) == 0 {
 			continue
 		}
 		viewDDL = fmt.Sprintf(sqldef.Y_SQL_CREATE_VIEW, yasdbSchema, viewName, viewDDL)
