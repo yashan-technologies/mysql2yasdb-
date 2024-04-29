@@ -43,6 +43,7 @@ DIR_TO_MAKE=$(BIN_PATH) $(LOG_PATH) $(DOCS_PATH)
 build: go_build
 	@mkdir -p $(DIR_TO_MAKE) 
 	@cp -r $(FILE_TO_COPY) $(PKG_PATH)
+	@cp ./README.md $(DOCS_PATH)
 	@mv $(BIN_FILES) $(BIN_PATH)
 	@> $(LOG_PATH)/mysql2yasdb.log
 	@> $(LOG_PATH)/console.out
