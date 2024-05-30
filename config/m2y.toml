@@ -1,13 +1,13 @@
 log_level = "debug"
 [mysql]
-host="192.168.8.236"
+host=""
 port=3306
 database="yashan"
 username="root"
 password="123456"
 #tables=["test_key_word"]
 schemas=["yashan"]
-exclude_tables=["data"]
+# exclude_tables=["data"]
 #parallel=1
 #parallel_per_table=1
 #batch_size=1000
@@ -17,8 +17,8 @@ sample_lines=1000
 #no_check_null_string=true
 
 [yashandb]
-host="192.168.8.246"
+host=""
 port=1688
-username="sys"
-password="yasdb_123"
-remap_schemas=["SYS"]
+username="yashan"
+password="yashan"
+remap_schemas=["yashan"]
