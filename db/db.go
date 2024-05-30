@@ -45,18 +45,18 @@ func LoadMysqlDB(mysql *confdef.MysqlConfig) (err error) {
 
 func LoadYashanDB(yashan *confdef.YashanConfig) (err error) {
 	yasdbDsn := fmt.Sprintf("%s/%s@%s:%d", yashan.UserName, formatPassword(yashan.Password), yashan.Host, yashan.Port)
-	yasDB, err := sql.Open(driver_yashandb, yasdbDsn)
+	yasdb, err := sql.Open(driver_yashandb, yasdbDsn)
 	if err != nil {
 		err = fmt.Errorf("连接yashandb时出错: %s, 请检查配置文件或环境变量", err.Error())
 		return
 	}
-	if err = yasDB.Ping(); err != nil {
+	if err = yasdb.Ping(); err != nil {
 		err = fmt.Errorf("连接yashandb时出错: %s, 请检查配置文件或环境变量", err.Error())
 		return
 	}
-	yasDB.SetMaxOpenConns(100)
-	yasDB.SetMaxIdleConns(50)
-	YashanDB = yasDB
+	yasdb.SetMaxOpenConns(100)
+	yasdb.SetMaxIdleConns(50)
+	YashanDB = yasdb
 	return
 }
 
