@@ -164,7 +164,7 @@ func getYasdbColumns(yasdb *sql.DB, yasdbSchema, yasdbTable string) ([]ColumnInf
 	} else {
 		yasdbSchema = strings.ToUpper(yasdbSchema)
 	}
-	// yasdbTable = strings.ToUpper(yasdbTable)
+	yasdbTable = strings.ToUpper(yasdbTable)
 	yasdbSql := fmt.Sprintf(sqldef.Y_SQL_QUERY_COLUMN, yasdbSchema, yasdbTable)
 	yasdbRows, err := yasdb.Query(yasdbSql)
 	if err != nil {
@@ -341,7 +341,7 @@ func uint8SliceToInt(slice []uint8) int {
 func buildYashanInsertSQL(yasdbSchema, tableName string, columns []ColumnInfo) string {
 	var columnNames, placeholders []string
 	for _, column := range columns {
-		columnNames = append(columnNames, fmt.Sprintf("\"%s\"", column.ColumnName))
+		columnNames = append(columnNames, column.ColumnName)
 		placeholders = append(placeholders, "?")
 	}
 	return fmt.Sprintf(sqldef.Y_SQL_INSERT_DATA, yasdbSchema, tableName, strings.Join(columnNames, ","), strings.Join(placeholders, ","))

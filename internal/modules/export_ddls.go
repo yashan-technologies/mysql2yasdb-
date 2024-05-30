@@ -548,7 +548,7 @@ func getViewDDLs(db *sql.DB, mysqlSchema, yasdbSchema string) ([]string, error) 
 func genColumnString(columns []string) string {
 	var newColumns []string
 	for _, column := range columns {
-		newColumns = append(newColumns, fmt.Sprintf("\"%s\"", column))
+		newColumns = append(newColumns, column)
 	}
 	return strings.Join(newColumns, ", ")
 }

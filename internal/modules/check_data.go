@@ -301,7 +301,7 @@ func getYasdbTableRowByPK(db *sql.DB, tableSchema, tableName string, pkColumnNam
 	var pkValues []interface{}
 	arr := make([]string, 0)
 	for i, columnName := range pkColumnName {
-		arr = append(arr, fmt.Sprintf("\"%s\" = :%d", columnName, i+1))
+		arr = append(arr, fmt.Sprintf("%s = :%d", columnName, i+1))
 		pkValues = append(pkValues, primaryKey[columnName])
 	}
 
