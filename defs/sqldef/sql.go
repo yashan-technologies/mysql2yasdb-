@@ -44,10 +44,14 @@ const (
 )
 
 const (
-	Y_SQL_QUERY_TABLE_COUNT    = "SELECT COUNT(*) FROM %s.%s"
-	Y_SQL_QUERY_TABLE_ROW_DATA = "SELECT * FROM \"%s\".\"%s\" WHERE %s"
-	Y_SQL_QUERY_COLUMN         = "select DATA_TYPE,COLUMN_NAME from all_tab_columns where owner='%s' and TABLE_NAME='%s' order by COLUMN_ID"
-	Y_SQL_SET_DEFINE_OFF       = "SET DEFINE OFF;\n"
+	Y_SQL_QUERY_TABLE_COUNT                = "SELECT COUNT(*) FROM %s.%s"
+	Y_SQL_QUERY_TABLE_COUNT_CASE_SENSITIVE = "SELECT COUNT(*) FROM \"%s\".\"%s\""
+
+	Y_SQL_QUERY_TABLE_ROW_DATA                = "SELECT * FROM %s.%s WHERE %s"
+	Y_SQL_QUERY_TABLE_ROW_DATA_CASE_SENSITIVE = "SELECT * FROM \"%s\".\"%s\" WHERE %s"
+
+	Y_SQL_QUERY_COLUMN   = "select DATA_TYPE,COLUMN_NAME from all_tab_columns where owner='%s' and TABLE_NAME='%s' order by COLUMN_ID"
+	Y_SQL_SET_DEFINE_OFF = "SET DEFINE OFF;\n"
 
 	Y_SQL_ALTER_COLUMN_NOT_NULL                = "ALTER TABLE %s.%s modify %s NOT NULL;\n"
 	Y_SQL_ALTER_COLUMN_NOT_NULL_CASE_SENSITIVE = "ALTER TABLE \"%s\".\"%s\" modify \"%s\" NOT NULL;\n"
