@@ -49,12 +49,13 @@ type MysqlConfig struct {
 }
 
 type YashanConfig struct {
-	Host         string   `toml:"host"`
-	Port         int      `toml:"port"`
-	Database     string   `toml:"database"`
-	UserName     string   `toml:"username"`
-	Password     string   `toml:"password"`
-	RemapSchemas []string `toml:"remap_schemas"`
+	Host          string   `toml:"host"`
+	Port          int      `toml:"port"`
+	Database      string   `toml:"database"`
+	UserName      string   `toml:"username"`
+	Password      string   `toml:"password"`
+	RemapSchemas  []string `toml:"remap_schemas"`
+	CaseSensitive bool     `toml:"case_sensitive"`
 }
 
 type M2YConfig struct {

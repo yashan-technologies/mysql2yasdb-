@@ -22,3 +22,4 @@ port=1688
 username="sys"
 password="yasdb_123"
 remap_schemas=["SYS"]
+case_sensitive = false
