@@ -339,10 +339,16 @@ func uint8SliceToInt(slice []uint8) int {
 
 // 构建YashanDB插入语句
 func buildYashanInsertSQL(yasdbSchema, tableName string, columns []ColumnInfo) string {
+	caseSensitive := confdef.GetM2YConfig().Yashan.CaseSensitive
 	var columnNames, placeholders []string
 	for _, column := range columns {
-		columnNames = append(columnNames, fmt.Sprintf("\"%s\"", column.ColumnName))
+		columnName := column.ColumnName
+		if caseSensitive {
+			columnName = fmt.Sprintf("\"%s\"", column.ColumnName)
+		}
+		columnNames = append(columnNames, columnName)
 		placeholders = append(placeholders, "?")
 	}
-	return fmt.Sprintf(sqldef.Y_SQL_INSERT_DATA, yasdbSchema, tableName, strings.Join(columnNames, ","), strings.Join(placeholders, ","))
+	formatter := getSQLFormatter(sqldef.Y_SQL_INSERT_DATA, sqldef.Y_SQL_INSERT_DATA_CASE_SENSITIVE)
+	return fmt.Sprintf(formatter, yasdbSchema, tableName, strings.Join(columnNames, ","), strings.Join(placeholders, ","))
 }
