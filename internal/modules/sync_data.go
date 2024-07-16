@@ -164,7 +164,9 @@ func getYasdbColumns(yasdb *sql.DB, yasdbSchema, yasdbTable string) ([]ColumnInf
 	} else {
 		yasdbSchema = strings.ToUpper(yasdbSchema)
 	}
-	// yasdbTable = strings.ToUpper(yasdbTable)
+	if !confdef.GetM2YConfig().Yashan.CaseSensitive {
+		yasdbTable = strings.ToUpper(yasdbTable)
+	}
 	yasdbSql := fmt.Sprintf(sqldef.Y_SQL_QUERY_COLUMN, yasdbSchema, yasdbTable)
 	yasdbRows, err := yasdb.Query(yasdbSql)
 	if err != nil {

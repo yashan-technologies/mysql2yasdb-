@@ -76,7 +76,8 @@ func compareTableCount(mysqlDB, yashanDB *sql.DB, mysqlSchema, yasdbSchema, tabl
 	}
 
 	// 查询 yasdb 表总行数
-	yasdbQuery := fmt.Sprintf(sqldef.Y_SQL_QUERY_TABLE_COUNT, yasdbSchema, tableName)
+	formatter := getSQLFormatter(sqldef.Y_SQL_QUERY_TABLE_COUNT, sqldef.Y_SQL_QUERY_TABLE_COUNT_CASE_SENSITIVE)
+	yasdbQuery := fmt.Sprintf(formatter, yasdbSchema, tableName)
 	yasdbRows, err := yashanDB.Query(yasdbQuery)
 	if err != nil {
 		return nil, err
@@ -299,13 +300,19 @@ func getMysqlTableData(db *sql.DB, mysqlSchema, tableName string, pkColumnNames 
 // 根据主键从 yasdb 中获取一行数据
 func getYasdbTableRowByPK(db *sql.DB, tableSchema, tableName string, pkColumnName []string, primaryKey map[string]interface{}) (tableData, error) {
 	var pkValues []interface{}
+	caseSensitive := confdef.GetM2YConfig().Yashan.CaseSensitive
 	arr := make([]string, 0)
 	for i, columnName := range pkColumnName {
-		arr = append(arr, fmt.Sprintf("\"%s\" = :%d", columnName, i+1))
+		if caseSensitive {
+			arr = append(arr, fmt.Sprintf("\"%s\" = :%d", columnName, i+1))
+		} else {
+			arr = append(arr, fmt.Sprintf("%s = :%d", columnName, i+1))
+		}
 		pkValues = append(pkValues, primaryKey[columnName])
 	}
 
-	rows, err := db.Query(fmt.Sprintf(sqldef.Y_SQL_QUERY_TABLE_ROW_DATA, tableSchema, tableName, strings.Join(arr, " AND ")), pkValues...)
+	formatter := getSQLFormatter(sqldef.Y_SQL_QUERY_TABLE_ROW_DATA, sqldef.Y_SQL_QUERY_TABLE_ROW_DATA_CASE_SENSITIVE)
+	rows, err := db.Query(fmt.Sprintf(formatter, tableSchema, tableName, strings.Join(arr, " AND ")), pkValues...)
 	if err != nil {
 		return tableData{}, err
 	}
