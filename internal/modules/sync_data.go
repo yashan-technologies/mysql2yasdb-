@@ -261,6 +261,11 @@ func syncTableDataFromMysqlToYasdbParallel(mysdb, yasdb *sql.DB, mysqlSchema, ya
 			}
 		}
 	}
+	err = targetTx.Commit()
+	if err != nil {
+		log.Logger.Errorf("表 %s.%s 同步失败, 事务提交失败: %v", mysqlSchema, mysqlTable, err)
+		return resultCount
+	}
 	// 执行最后一批数据的提交操作
 	// if batchCount > 0 {
 	// err = targetTx.Commit()
