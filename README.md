@@ -64,9 +64,9 @@ Run "mysql2yasdb <command> --help" for more information on a command.
 
 mysql2yasdb工具有两条子命令：
 
-- `export`命令用于导出Mysql数据库的DDL到`{M2Y_HOME}/export`目录下
-- `sync`命令用于直接将Mysql数据库的指定表的数据导入到YashanDB数据库中
-- `check`命令用于校验Mysql数据库的数据和YashanDB数据库中指定表的数据
+- `export`命令用于导出MySQL数据库的DDL到`{M2Y_HOME}/export`目录下
+- `sync`命令用于直接将MySQL数据库的指定表的数据导入到YashanDB数据库中
+- `check`命令用于校验MySQL数据库的数据和YashanDB数据库中指定表的数据
 
 `export`、`sync`和`check`子命令的数据库连接信息和表信息均由工具配置文件指定
 
@@ -104,10 +104,10 @@ remap_schemas=["yashan","yashan","yashan"]  #迁移至YashanDB的目标用户名
 
 #### 前置准备：
 
-- 一个需要导出数据的Mysql数据库
+- 一个需要导出数据的MySQL数据库
 - 一个用于导入数据的YashanDB数据库
 
-#### 导出Mysql数据库指定表的DDL：
+#### 导出MySQL数据库指定表的DDL：
 
 1. 编辑mysql2yasdb工具配置文件，使用满足工具要求的用户连接数据库，并指定要导出DDL的schema或表格
 2. 执行 `./mysql2yasdb export`命令导出DDL
