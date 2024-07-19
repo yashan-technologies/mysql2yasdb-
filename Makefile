@@ -30,13 +30,14 @@ PKG_PATH=$(BUILD_PATH)/$(PKG_PERFIX)
 BIN_PATH=$(PKG_PATH)/bin
 LOG_PATH=$(PKG_PATH)/log
 DOCS_PATH=$(PKG_PATH)/docs
+LIB_PATH=$(PKG_PATH)/lib 
 
 # build defines
 BIN_M2Y=$(BUILD_PATH)/mysql2yasdb
 BIN_FILES=$(BIN_M2Y)
 
-FILE_TO_COPY=./config ./lib
-DIR_TO_MAKE=$(BIN_PATH) $(LOG_PATH) $(DOCS_PATH)
+FILE_TO_COPY=./config 
+DIR_TO_MAKE=$(BIN_PATH) $(LOG_PATH) $(DOCS_PATH) $(LIB_PATH)
 
 .PHONY: clean force go_build
 
@@ -44,6 +45,7 @@ build: go_build
 	@mkdir -p $(DIR_TO_MAKE) 
 	@cp -r $(FILE_TO_COPY) $(PKG_PATH)
 	@cp ./README.md $(DOCS_PATH)
+	@cp -r ./lib/$(ARCH)/* $(LIB_PATH)
 	@mv $(BIN_FILES) $(BIN_PATH)
 	@> $(LOG_PATH)/mysql2yasdb.log
 	@> $(LOG_PATH)/console.out
