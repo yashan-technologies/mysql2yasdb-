@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"reflect"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -13,6 +13,8 @@ import (
 	"m2y/defs/confdef"
 	"m2y/defs/sqldef"
 	"m2y/log"
+
+	"github.com/olekukonko/tablewriter"
 )
 
 type tableData struct {
@@ -31,7 +33,7 @@ var cannotUsedPrimaryDateType = map[string]struct{}{
 	"longtext":   {},
 }
 
-func getMysqlPrimaryKey(mysqlDB *sql.DB, mysqlSchema, tableName string) ([]string, error) {
+func getMySQLPrimaryKey(mysqlDB *sql.DB, mysqlSchema, tableName string) ([]string, error) {
 	var pkColumns []string
 	// 查询主键列信息
 	rows, err := mysqlDB.Query(sqldef.M_SQL_QUERY_PRIMARY_KEY, mysqlSchema, tableName)
@@ -109,18 +111,18 @@ func CompareTables(mysqlDB, yashanDB *sql.DB, mysqlSchema, yasdbSchema string, t
 
 func CompareSchemas(mysqlDB, yashanDB *sql.DB, mysqlSchemas, remapSchemas []string, excludeTables []string, parallel, sampleLine int) ([][]string, error) {
 	// 查询表的信息
-	mysqDbs, err := getMysqlAllDbs(mysqlDB)
+	mysqDbs, err := getMySQLAllDbs(mysqlDB)
 	if err != nil {
 		return nil, err
 	}
 	sts := []schemaTable{}
 	for i, mysqlSchema := range mysqlSchemas {
 		if !inArrayStr(mysqlSchema, mysqDbs) {
-			log.Logger.Errorf("Mysql Database %s 不存在,请检查配置文件或Mysql环境\n", mysqlSchema)
+			log.Logger.Errorf("MySQL Database %s 不存在,请检查配置文件或MySQL环境\n", mysqlSchema)
 			continue
 		}
 		yasdbSchema := remapSchemas[i]
-		tables, err := getMysqlSchemaTables(mysqlDB, mysqlSchema)
+		tables, err := getMySQLSchemaTables(mysqlDB, mysqlSchema)
 		if err != nil {
 			return nil, err
 		}
@@ -161,30 +163,30 @@ func compareTables(mysqlDB, yashanDB *sql.DB, tables []schemaTable, parallel, sa
 				<-semaphore
 				wg.Done()
 			}()
-			log.Logger.Infof("开始对比Mysql表 %s.%s 和YashanDB表 %s.%s ...\n", mysqlSchema, tableName, yasdbSchema, tableName)
+			log.Logger.Infof("开始对比 MySQL表 %s.%s 和 YashanDB表 %s.%s ...\n", mysqlSchema, tableName, yasdbSchema, tableName)
 			// 记录开始时间
 			start := time.Now()
-			log.Logger.Infof("开始对比Mysql表 %s.%s 和YashanDB表 %s.%s 总行数...\n", mysqlSchema, tableName, yasdbSchema, tableName)
+			log.Logger.Infof("开始对比 MySQL表 %s.%s 和 YashanDB表 %s.%s 总行数...\n", mysqlSchema, tableName, yasdbSchema, tableName)
 			result, err := compareTableCount(mysqlDB, yashanDB, mysqlSchema, yasdbSchema, tableName)
 			if err != nil {
-				log.Logger.Errorf("Mysql表 %s.%s 和YashanDB表 %s.%s 总行数对比失败: %v\n", mysqlSchema, tableName, yasdbSchema, tableName, err)
+				log.Logger.Errorf("MySQL表 %s.%s 和 YashanDB表 %s.%s 总行数对比失败: %v\n", mysqlSchema, tableName, yasdbSchema, tableName, err)
 				return
 			}
 			results = append(results, result)
 			var errCount int
-			if !confdef.GetM2YConfig().Mysql.RowsOnly {
-				log.Logger.Infof("开始对比Mysql表 %s.%s 和YashanDB表 %s.%s 内容...\n", mysqlSchema, tableName, yasdbSchema, tableName)
+			if !confdef.GetM2YConfig().MySQL.RowsOnly {
+				log.Logger.Infof("开始对比 MySQL表 %s.%s 和 YashanDB表 %s.%s 内容...\n", mysqlSchema, tableName, yasdbSchema, tableName)
 				errCount, err = compareTableContent(mysqlDB, yashanDB, mysqlSchema, yasdbSchema, tableName, sampleLine)
 				if err != nil {
-					log.Logger.Errorf("Mysql表 %s.%s 和YashanDB表 %s.%s 内容对比失败: %v\n", mysqlSchema, tableName, yasdbSchema, tableName, err)
+					log.Logger.Errorf("MySQL表 %s.%s 和 YashanDB表 %s.%s 内容对比失败: %v\n", mysqlSchema, tableName, yasdbSchema, tableName, err)
 					return
 				}
 			}
 			elapsed := time.Since(start) // 计算经过的时间
 			if errCount > 0 {
-				log.Logger.Infof("Mysql表 %s.%s 和YashanDB表 %s.%s 数据对比完成, 错误行数: %d, 耗时: %s\n", mysqlSchema, tableName, yasdbSchema, tableName, errCount, elapsed)
+				log.Logger.Infof("MySQL表 %s.%s 和 YashanDB表 %s.%s 数据对比完成, 错误行数: %d, 耗时: %s\n", mysqlSchema, tableName, yasdbSchema, tableName, errCount, elapsed)
 			} else {
-				log.Logger.Infof("Mysql表 %s.%s 和YashanDB表 %s.%s 数据对比完成, 无异常, 耗时: %s\n", mysqlSchema, tableName, yasdbSchema, tableName, elapsed)
+				log.Logger.Infof("MySQL表 %s.%s 和 YashanDB表 %s.%s 数据对比完成, 无异常, 耗时: %s\n", mysqlSchema, tableName, yasdbSchema, tableName, elapsed)
 			}
 		}(mysqlDB, yashanDB, tables[i].mysqlSchema, tables[i].yasdbSchema, tables[i].table)
 	}
@@ -195,20 +197,22 @@ func compareTables(mysqlDB, yashanDB *sql.DB, tables []schemaTable, parallel, sa
 
 func compareTableContent(mysqlDB, yashanDB *sql.DB, mysqlSchema, yasdbSchema, tableName string, sampleLine int) (int, error) {
 	errCount := 0
-	pkColumnName, err := getMysqlPrimaryKey(mysqlDB, mysqlSchema, tableName)
+	pkColumnName, err := getMySQLPrimaryKey(mysqlDB, mysqlSchema, tableName)
 	if err != nil {
-		log.Logger.Errorf("获取Mysql表 %s.%s 主键失败: %v\n", mysqlSchema, tableName, err)
+		log.Logger.Errorf("获取MySQL表 %s.%s 主键失败: %v\n", mysqlSchema, tableName, err)
 		return 0, err
 	}
 	if len(pkColumnName) == 0 {
-		log.Logger.Errorf("Mysql表 %s.%s 没有主键\n", mysqlSchema, tableName)
+		// TODO: 支持无主键表的对比
+		// 对所有列进行排序，逐行对比
+		log.Logger.Errorf("MySQL表 %s.%s 没有主键\n", mysqlSchema, tableName)
 		return 0, fmt.Errorf("跳过无主键表 %s.%s 的内容比对", mysqlSchema, tableName)
 	}
 
 	// 获取 MySQL 表数据
-	mysqlData, columnNames, err := getMysqlTableData(mysqlDB, mysqlSchema, tableName, pkColumnName, sampleLine)
+	mysqlData, columnNames, err := getMySQLTableData(mysqlDB, mysqlSchema, tableName, pkColumnName, sampleLine)
 	if err != nil {
-		log.Logger.Errorf("获取Mysql表 %s.%s 数据失败: %v\n", mysqlSchema, tableName, err)
+		log.Logger.Errorf("获取MySQL表 %s.%s 数据失败: %v\n", mysqlSchema, tableName, err)
 		return 0, err
 	}
 
@@ -229,7 +233,7 @@ func compareTableContent(mysqlDB, yashanDB *sql.DB, mysqlSchema, yasdbSchema, ta
 	return errCount, nil
 }
 
-func getMysqlTableData(db *sql.DB, mysqlSchema, tableName string, pkColumnNames []string, sampleLine int) ([]tableData, []string, error) {
+func getMySQLTableData(db *sql.DB, mysqlSchema, tableName string, pkColumnNames []string, sampleLine int) ([]tableData, []string, error) {
 	var columnNames []string
 	query := fmt.Sprintf(sqldef.M_SQL_QUERY_TABLE_ALL_DATA, mysqlSchema, tableName)
 	if sampleLine != 0 {
@@ -277,7 +281,7 @@ func getMysqlTableData(db *sql.DB, mysqlSchema, tableName string, pkColumnNames 
 		mysqlValues := make([]interface{}, len(values))
 		for i, value := range values {
 			// fmt.Println(columns[i].ColumnType)
-			mysqlValues[i] = convertToMysqlType(value, columns[i].ColumnType)
+			mysqlValues[i] = convertToMySQLType(value, columns[i].ColumnType)
 		}
 
 		for i, column := range columns {
@@ -351,6 +355,39 @@ func getYasdbTableRowByPK(db *sql.DB, tableSchema, tableName string, pkColumnNam
 	return tableData{RowData: rowData}, nil
 }
 
+// mysql和yasdb对空字符串的处理不一样
+func isDataEqual(v1, v2 any) bool {
+	switch value1 := v1.(type) {
+	case string:
+		switch value2 := v2.(type) {
+		case string:
+			return value1 == value2
+		case nil:
+			return len(value1) == 0
+		}
+	case nil:
+		switch value2 := v2.(type) {
+		case string:
+			return len(value2) == 0
+		case nil:
+			return true
+		}
+	}
+	return fmt.Sprint(v1) == fmt.Sprint(v2)
+}
+
+func showValue(v any) string {
+	return fmt.Sprintf("[value: %v, type: %T]", v, v)
+}
+
+func showPrimaryKeys(keys map[string]any) string {
+	var s string
+	for k, v := range keys {
+		s += fmt.Sprintf("[%s:%v]", k, v)
+	}
+	return s
+}
+
 // 比较两行数据是否完全一致
 func compareTableRowData(row1 tableData, row2 tableData, columnNames []string, tableName string) bool {
 	// 比较两行数据的字段数量是否一致
@@ -362,17 +399,17 @@ func compareTableRowData(row1 tableData, row2 tableData, columnNames []string, t
 		value2 := row2.RowData[i]
 		// 对比字段值是否一致
 		// if !reflect.DeepEqual(value1, value2) {
-		if fmt.Sprintf("%v", value1) != strings.TrimSpace(fmt.Sprintf("%v", value2)) {
+		if !isDataEqual(value1, value2) {
 			// fmt.Println(i, value1, value2, fmt.Sprintf("%T", value1), fmt.Sprintf("%T", value2))
-			log.Logger.Errorf("Mysql表 %s 字段 %s 主键值为 %v 的数据不一致, Mysql数据为: %v(%v) YashanDB数据为: %v(%v)\n", tableName, columnNames[i], row1.PkData, value1, reflect.TypeOf(value1), value2, reflect.TypeOf(value2))
+			log.Logger.Errorf("表：[%s]，字段：[%s] 的数据不一致，主键值：%s, MySQL数据为: %s YashanDB数据为: %s", tableName, columnNames[i], showPrimaryKeys(row1.PkData), showValue(value1), showValue(value2))
 			return false
 		}
 	}
 	return true
 }
 
-// 将值转换为Mysql类型
-func convertToMysqlType(value interface{}, columnType string) interface{} {
+// 将值转换为MySQL类型
+func convertToMySQLType(value interface{}, columnType string) interface{} {
 	if value != nil {
 		switch columnType {
 		case "DATETIME", "TIMESTAMP":
@@ -398,13 +435,13 @@ func convertToMysqlType(value interface{}, columnType string) interface{} {
 		case "FLOAT":
 			str, ok := value.([]uint8)
 			if ok {
-				return convertMysqlFloat(string(str))
+				return convertMySQLFloat(string(str))
 			}
 			return value
 		case "DOUBLE", "DECIMAL", "BIGINT":
 			str, ok := value.([]uint8)
 			if ok {
-				return convertMysqlDoubleOrDecimal(string(str))
+				return convertMySQLDoubleOrDecimal(string(str))
 			}
 			return value
 		case "JSON":
@@ -431,7 +468,7 @@ func convertToMysqlType(value interface{}, columnType string) interface{} {
 	}
 }
 
-func convertMysqlFloat(value string) interface{} {
+func convertMySQLFloat(value string) interface{} {
 	res, err := strconv.ParseFloat(value, 32)
 	if err != nil {
 		return value
@@ -439,7 +476,7 @@ func convertMysqlFloat(value string) interface{} {
 	return float32(res)
 }
 
-func convertMysqlDoubleOrDecimal(value string) interface{} {
+func convertMySQLDoubleOrDecimal(value string) interface{} {
 	res, err := strconv.ParseFloat(value, 64)
 	if err != nil {
 		return value
@@ -474,14 +511,31 @@ func containsString(arr []string, target string) bool {
 	return false
 }
 
+func printTable(message string, header []string, data [][]string) {
+	fmt.Print(message)
+	if len(data) == 0 {
+		fmt.Println("无")
+		return
+	}
+	table := tablewriter.NewWriter(os.Stdout)
+	table.SetHeader(header)
+	table.SetAutoWrapText(false)
+	table.SetAutoFormatHeaders(false)
+	table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
+	table.SetAlignment(tablewriter.ALIGN_LEFT)
+	table.SetCenterSeparator("")
+	table.SetColumnSeparator("")
+	table.SetRowSeparator("")
+	table.SetHeaderLine(false)
+	table.SetTablePadding("\t")
+	table.SetNoWhiteSpace(true)
+	table.AppendBulk(data)
+	table.Render()
+}
+
 func PrintCheckResults(results [][]string) {
 	var sames, not_sames [][]string
-	mdbnameWidth := 16
-	ydbnameWidth := 21
-	tbnameWidth := 11
-	mrcWidth := 14
-	yrcWidth := 19
-	drcWidth := 15
+	header := []string{"MySQL-Database", "YashanDB-Schema", "Table-Name", "MySQL-Rows", "YashanDB-Rows", "Diff-Rows"}
 	if len(results) == 0 {
 		fmt.Printf("没有需要对比的表\n")
 		return
@@ -501,43 +555,7 @@ func PrintCheckResults(results [][]string) {
 		} else {
 			not_sames = append(not_sames, result)
 		}
-		if len(result[0]) >= mdbnameWidth {
-			mdbnameWidth = len(result[0]) + 2
-		}
-		if len(result[1]) >= ydbnameWidth {
-			ydbnameWidth = len(result[1]) + 2
-		}
-		if len(result[2]) >= tbnameWidth {
-			tbnameWidth = len(result[2]) + 2
-		}
-		if len(result[3]) >= mrcWidth {
-			mrcWidth = len(result[3])
-		}
-		if len(result[4]) >= yrcWidth {
-			yrcWidth = len(result[4]) + 2
-		}
-		if len(result[5]) >= drcWidth {
-			drcWidth = len(result[5]) + 2
-		}
 	}
-	fmt.Println("\n表总行数一致的表统计信息如下:")
-
-	// maxWidth := 20
-	if len(sames) == 0 {
-		fmt.Println("无")
-	} else {
-		fmt.Printf("%-*s%-*s%-*s%*s%*s%*s\n", mdbnameWidth, "MySQL-database", ydbnameWidth, "YashanDB-tableOwner", tbnameWidth, "tableName", mrcWidth, "MySQL-rowCount", yrcWidth, "YashanDB-rowCount", drcWidth, "diff-rowCount")
-	}
-	for _, same := range sames {
-		fmt.Printf("%-*s%-*s%-*s%*s%*s%*s\n", mdbnameWidth, same[0], ydbnameWidth, same[1], tbnameWidth, same[2], mrcWidth, same[3], yrcWidth, same[4], drcWidth, same[5])
-	}
-	fmt.Println("\n表总行数不一致的表统计信息如下:")
-	if len(not_sames) == 0 {
-		fmt.Println("无")
-	} else {
-		fmt.Printf("%-*s%-*s%-*s%*s%*s%*s\n", mdbnameWidth, "MySQL-database", ydbnameWidth, "YashanDB-tableowner", tbnameWidth, "tableName", mrcWidth, "MySQL-rowCount", yrcWidth, "YashanDB-rowCount", drcWidth, "diff-rowCount")
-	}
-	for _, not_same := range not_sames {
-		fmt.Printf("%-*s%-*s%-*s%*s%*s%*s\n", mdbnameWidth, not_same[0], ydbnameWidth, not_same[1], tbnameWidth, not_same[2], mrcWidth, not_same[3], yrcWidth, not_same[4], drcWidth, not_same[5])
-	}
+	printTable("表总行数一致的表统计信息如下：", header, sames)
+	printTable("表总行数不一致的表统计信息如下：", header, not_sames)
 }

@@ -3,15 +3,15 @@ package errdef
 import "fmt"
 
 type TransUnSupportTypeErr struct {
-	MysqlType string
+	MySQLType string
 }
 
 func (e TransUnSupportTypeErr) Error() string {
-	return fmt.Sprintf("mysql type: %s unsupport", e.MysqlType)
+	return fmt.Sprintf("mysql type: %s unsupport", e.MySQLType)
 }
 
 func NewTransUnSupportTypeErr(t string) *TransUnSupportTypeErr {
 	return &TransUnSupportTypeErr{
-		MysqlType: t,
+		MySQLType: t,
 	}
 }

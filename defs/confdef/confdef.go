@@ -30,7 +30,7 @@ var (
 
 var _config M2YConfig
 
-type MysqlConfig struct {
+type MySQLConfig struct {
 	Host              string   `toml:"host"`
 	Port              int      `toml:"port"`
 	Database          string   `toml:"database"`
@@ -60,7 +60,7 @@ type YashanConfig struct {
 
 type M2YConfig struct {
 	LogLevel string        `toml:"log_level"`
-	Mysql    *MysqlConfig  `toml:"mysql"`
+	MySQL    *MySQLConfig  `toml:"mysql"`
 	Yashan   *YashanConfig `toml:"yashandb"`
 }
 
@@ -90,10 +90,10 @@ func (c *M2YConfig) validate() error {
 	if len(c.Yashan.RemapSchemas) == 0 {
 		return ErrNeedRemapSchemas
 	}
-	if len(c.Mysql.Schemas) == 0 && len(c.Mysql.Tables) == 0 {
+	if len(c.MySQL.Schemas) == 0 && len(c.MySQL.Tables) == 0 {
 		return ErrSchemasAndTablesAtLeastOne
 	}
-	if len(c.Mysql.Schemas) > 0 && len(c.Mysql.Tables) > 0 {
+	if len(c.MySQL.Schemas) > 0 && len(c.MySQL.Tables) > 0 {
 		return ErrSchemasAndTablesAllExist
 	}
 	return nil

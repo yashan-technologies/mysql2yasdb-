@@ -152,7 +152,7 @@ func DealSchemasDDL(mysqlDB *sql.DB, schemas, remapSchemas []string, excludeTabl
 		return err
 	}
 	// 查询表的信息
-	mysqlDbs, err := getMysqlAllDbs(mysqlDB)
+	mysqlDbs, err := getMySQLAllDbs(mysqlDB)
 	if err != nil {
 		return err
 	}
@@ -164,7 +164,7 @@ func DealSchemasDDL(mysqlDB *sql.DB, schemas, remapSchemas []string, excludeTabl
 			continue
 		}
 		var tables []string
-		allTables, err := getMysqlSchemaTables(mysqlDB, schema)
+		allTables, err := getMySQLSchemaTables(mysqlDB, schema)
 		if err != nil {
 			log.Logger.Errorf("获取schema %s 中的表失败: %v", schema, err)
 			continue
@@ -238,7 +238,7 @@ func getTableColumnDDLs(mysql *sql.DB, mysqlSchema, yasdbSchema, tableName strin
 			return nil, nil, fmt.Errorf("查询表属性 information_schema.columns 出错: %s", err.Error())
 		}
 		// 将MySQL数据类型映射为目标端数据类型和长度信息
-		yasType, err := typedef.MysqlToYasType(dataType)
+		yasType, err := typedef.MySQLToYasType(dataType)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -252,7 +252,7 @@ func getTableColumnDDLs(mysql *sql.DB, mysqlSchema, yasdbSchema, tableName strin
 			columnDefaultStr = getDefaultStmt(yasType, columnDefault, hasDefault)
 		case typedef.Y_INTEGER, typedef.Y_SMALLINT, typedef.Y_BIGINT:
 			if columnTypeLength.Valid {
-				if db.MysqlVersion != db.MYSQL_VERSION_8 {
+				if db.MySQLVersion != db.MYSQL_VERSION_8 {
 					yasType = fmt.Sprintf(sqldef.Y_INT_FORMAT, yasType, columnTypeLength.String)
 				}
 			}
@@ -580,7 +580,7 @@ func genColumnString(columns []string) string {
 }
 
 func getIndexes(mysql *sql.DB, mysqlSchema, tableName string) ([]Index, error) {
-	switch db.MysqlVersion {
+	switch db.MySQLVersion {
 	case db.MYSQL_VERSION_5:
 		return getIndexes5(mysql, mysqlSchema, tableName)
 	case db.MYSQL_VERSION_8:
@@ -591,7 +591,7 @@ func getIndexes(mysql *sql.DB, mysqlSchema, tableName string) ([]Index, error) {
 }
 
 func getIndexes8(mysql *sql.DB, mysqlSchema, tableName string) ([]Index, error) {
-	if db.MysqlVersion != db.MYSQL_VERSION_8 {
+	if db.MySQLVersion != db.MYSQL_VERSION_8 {
 		return nil, nil
 	}
 	// 执行SHOW INDEXES查询
@@ -642,7 +642,7 @@ func getIndexes8(mysql *sql.DB, mysqlSchema, tableName string) ([]Index, error) 
 }
 
 func getIndexes5(mysql *sql.DB, mysqlSchema, tableName string) ([]Index, error) {
-	if db.MysqlVersion != db.MYSQL_VERSION_5 {
+	if db.MySQLVersion != db.MYSQL_VERSION_5 {
 		return nil, nil
 	}
 	// 执行SHOW INDEXES查询
@@ -691,7 +691,7 @@ func getIndexes5(mysql *sql.DB, mysqlSchema, tableName string) ([]Index, error) 
 	return indexes, nil
 }
 
-func getMysqlAllDbs(mysql *sql.DB) ([]string, error) {
+func getMySQLAllDbs(mysql *sql.DB) ([]string, error) {
 	var dbs []string
 	// 查询数据库信息
 	rows, err := mysql.Query(sqldef.M_SQL_SHOW_DATABASES)
@@ -714,7 +714,7 @@ func getMysqlAllDbs(mysql *sql.DB) ([]string, error) {
 	return dbs, nil
 }
 
-func getMysqlSchemaTables(mysql *sql.DB, mysqlSchema string) ([]string, error) {
+func getMySQLSchemaTables(mysql *sql.DB, mysqlSchema string) ([]string, error) {
 	var tables []string
 	rows, err := mysql.Query(sqldef.M_SQL_QUERY_TABLES, mysqlSchema)
 	if err != nil {

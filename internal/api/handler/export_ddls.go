@@ -14,8 +14,8 @@ func NewExportDDLsHandler() *ExportDDLsHandler {
 
 func (c *ExportDDLsHandler) ExportDDLs() error {
 	config := confdef.GetM2YConfig()
-	if len(config.Mysql.Tables) != 0 {
-		return modules.DealTablesDDLs(db.MysqlDB, config.Mysql.Database, config.Yashan.RemapSchemas[0], config.Mysql.Schemas, false)
+	if len(config.MySQL.Tables) != 0 {
+		return modules.DealTablesDDLs(db.MySQLDB, config.MySQL.Database, config.Yashan.RemapSchemas[0], config.MySQL.Schemas, false)
 	}
-	return modules.DealSchemasDDL(db.MysqlDB, config.Mysql.Schemas, config.Yashan.RemapSchemas, config.Mysql.ExcludeTables)
+	return modules.DealSchemasDDL(db.MySQLDB, config.MySQL.Schemas, config.Yashan.RemapSchemas, config.MySQL.ExcludeTables)
 }
