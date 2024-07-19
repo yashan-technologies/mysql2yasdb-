@@ -203,10 +203,9 @@ func compareTableContent(mysqlDB, yashanDB *sql.DB, mysqlSchema, yasdbSchema, ta
 		return 0, err
 	}
 	if len(pkColumnName) == 0 {
-		// TODO: 支持无主键表的对比
-		// 对所有列进行排序，逐行对比
-		log.Logger.Errorf("MySQL表 %s.%s 没有主键\n", mysqlSchema, tableName)
-		return 0, fmt.Errorf("跳过无主键表 %s.%s 的内容比对", mysqlSchema, tableName)
+		// 不支持无主键表的对比
+		log.Logger.Warnf("MySQL表 %s.%s 没有主键, 跳过无主键表的内容比对\n", mysqlSchema, tableName)
+		return 0, nil
 	}
 
 	// 获取 MySQL 表数据
