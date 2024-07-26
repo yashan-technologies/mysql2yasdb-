@@ -75,7 +75,7 @@ mysql2yasdb工具有两条子命令：
 ```ini
 log_level = "debug"							#工具的日志级别
 [mysql]
-host="192.168.3.180"                        #mysql主机IP地址
+host="127.0.0.1"                        #mysql主机IP地址
 port=3306                                   #mysql访问端口
 database="test"                             #默认访问的database，当按tables导出时,导出此database下面的表
 username="yashan"                           #mysql访问用户名，需授予information_schema下相关系统表访问权限
@@ -93,7 +93,7 @@ sample_lines=1000                           #校验行数
 #no_check_null_string=true                  #是否不校验空字符串
 
 [yashandb]
-host="192.168.3.180"                        #YahsanDB主机IP地址
+host="127.0.0.1"                        #YahsanDB主机IP地址
 port=1688                                   #YashanDB访问端口
 username="yashan"                           #YashanDB访问用户名，按表导入时，导入到此用户下
 password="yashan123"                        #YashanDB访问用户密码，建议密码串用双引号引起来，避免复杂密码识别有误
@@ -114,7 +114,7 @@ remap_schemas=["yashan","yashan","yashan"]  #迁移至YashanDB的目标用户名
 
 #### YashanDB数据库建表：
 
-1. 使用前置过程中导出的DDL在YashanDB数据库中创建表、索引、约束等
+1. 使用前置过程中导出的DDL在YashanDB数据库中创建表、索引、约束等，先执行tables目录下的DDL，建议迁移成功之后再执行others目录下的DDL。
 
 >直接使用导出的DDL在YashanDB数据库中执行可能会报错。
 >

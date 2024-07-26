@@ -23,7 +23,7 @@ func (c *M2YSyncDataCmd) Run() error {
 }
 
 func (c *M2YSyncDataCmd) validate() error {
-	if confdef.GetM2YConfig().Yashan.RemapSchemas == nil {
+	if len(confdef.GetM2YConfig().Yashan.RemapSchemas) == 0 {
 		return confdef.ErrNeedRemapSchemas
 	}
 	return nil

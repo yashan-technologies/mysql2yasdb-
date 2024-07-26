@@ -15,7 +15,6 @@ var (
 	ErrSchemasAndTablesAllExist   = errors.New("schemas 和 tables 这两个参数不能同时配置, 请检查配置文件")
 	ErrSchemasAndTablesAtLeastOne = errors.New("schemas 和 tables 这两个参数至少需要配置一个, 请检查配置文件")
 	ErrNeedRemapSchemas           = errors.New("需要配置remap_schemas, 指定在崖山要导入的用户, 请检查配置文件")
-	ErrRemapSchema                = errors.New("需要配置remap_schemas, 指定在崖山要导入的用户, 请检查配置文件")
 	ErrSampleLines                = errors.New("需要配置sample_lines, 指定数据校验时单表的随机采样行数, 参数大于等于0, 为0表示全表校验")
 )
 
