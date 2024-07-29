@@ -64,9 +64,9 @@ Run "mysql2yasdb <command> --help" for more information on a command.
 
 mysql2yasdb工具有两条子命令：
 
-- `export`命令用于导出Mysql数据库的DDL到`{M2Y_HOME}/export`目录下
-- `sync`命令用于直接将Mysql数据库的指定表的数据导入到YashanDB数据库中
-- `check`命令用于校验Mysql数据库的数据和YashanDB数据库中指定表的数据
+- `export`命令用于导出MySQL数据库的DDL到`{M2Y_HOME}/export`目录下
+- `sync`命令用于直接将MySQL数据库的指定表的数据导入到YashanDB数据库中
+- `check`命令用于校验MySQL数据库的数据和YashanDB数据库中指定表的数据
 
 `export`、`sync`和`check`子命令的数据库连接信息和表信息均由工具配置文件指定
 
@@ -75,7 +75,7 @@ mysql2yasdb工具有两条子命令：
 ```ini
 log_level = "debug"							#工具的日志级别
 [mysql]
-host="192.168.3.180"                        #mysql主机IP地址
+host="127.0.0.1"                        #mysql主机IP地址
 port=3306                                   #mysql访问端口
 database="test"                             #默认访问的database，当按tables导出时,导出此database下面的表
 username="yashan"                           #mysql访问用户名，需授予information_schema下相关系统表访问权限
@@ -93,7 +93,7 @@ sample_lines=1000                           #校验行数
 #no_check_null_string=true                  #是否不校验空字符串
 
 [yashandb]
-host="192.168.3.180"                        #YahsanDB主机IP地址
+host="127.0.0.1"                        #YahsanDB主机IP地址
 port=1688                                   #YashanDB访问端口
 username="yashan"                           #YashanDB访问用户名，按表导入时，导入到此用户下
 password="yashan123"                        #YashanDB访问用户密码，建议密码串用双引号引起来，避免复杂密码识别有误
@@ -104,17 +104,17 @@ remap_schemas=["yashan","yashan","yashan"]  #迁移至YashanDB的目标用户名
 
 #### 前置准备：
 
-- 一个需要导出数据的Mysql数据库
+- 一个需要导出数据的MySQL数据库
 - 一个用于导入数据的YashanDB数据库
 
-#### 导出Mysql数据库指定表的DDL：
+#### 导出MySQL数据库指定表的DDL：
 
 1. 编辑mysql2yasdb工具配置文件，使用满足工具要求的用户连接数据库，并指定要导出DDL的schema或表格
 2. 执行 `./mysql2yasdb export`命令导出DDL
 
 #### YashanDB数据库建表：
 
-1. 使用前置过程中导出的DDL在YashanDB数据库中创建表、索引、约束等
+1. 使用前置过程中导出的DDL在YashanDB数据库中创建表、索引、约束等，先执行tables目录下的DDL，建议迁移成功之后再执行others目录下的DDL。
 
 >直接使用导出的DDL在YashanDB数据库中执行可能会报错。
 >

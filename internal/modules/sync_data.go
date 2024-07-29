@@ -39,7 +39,7 @@ func DealTableData(mysql, yasdb *sql.DB, mysqlSchema, yasdbSchema string, alltab
 		semaphore <- true
 		go func(mysdb, yasdDb *sql.DB, mysqlSchema, yasdbSchema, mysqlTable, yasdbTable string) {
 			defer wg.Done()
-			syncTableDataFromMysqlToYasdb(0, mysdb, yasdDb, mysqlSchema, yasdbSchema, mysqlTable, yasdbTable, tableParallel, batchSize)
+			syncTableDataFromMySQLToYasdb(0, mysdb, yasdDb, mysqlSchema, yasdbSchema, mysqlTable, yasdbTable, tableParallel, batchSize)
 			// 任务完成后释放信号量
 			<-semaphore
 
@@ -54,7 +54,7 @@ func DealTableData(mysql, yasdb *sql.DB, mysqlSchema, yasdbSchema string, alltab
 
 func DealSchemasData(mysql, yasdb *sql.DB, mysqlSchemas, yasdbSchemas []string, excludeTables []string, parallel, tableParallel, batchSize int) error {
 	// 查询表的信息
-	mysqDbs, err := getMysqlAllDbs(mysql)
+	mysqDbs, err := getMySQLAllDbs(mysql)
 	if err != nil {
 		return fmt.Errorf("获取mysql所有schema失败: %v", err)
 	}
@@ -64,7 +64,7 @@ func DealSchemasData(mysql, yasdb *sql.DB, mysqlSchemas, yasdbSchemas []string, 
 			log.Logger.Infof("schema%s不存在, 请检查配置文件或mysql环境信息", schema)
 			continue
 		}
-		tables, err := getMysqlSchemaTables(mysql, schema)
+		tables, err := getMySQLSchemaTables(mysql, schema)
 		if err != nil {
 			return err
 		}
@@ -88,7 +88,7 @@ func DealSchemasData(mysql, yasdb *sql.DB, mysqlSchemas, yasdbSchemas []string, 
 		semaphore <- true
 		go func(i int, mysdb, yasdDb *sql.DB, mysqlSchema, yasdbSchema, mysqlTable, yasdbTable string, tableParallel, batchSize int) {
 			defer wg.Done()
-			syncTableDataFromMysqlToYasdb(i, mysdb, yasdDb, mysqlSchema, yasdbSchema, mysqlTable, yasdbTable, tableParallel, batchSize)
+			syncTableDataFromMySQLToYasdb(i, mysdb, yasdDb, mysqlSchema, yasdbSchema, mysqlTable, yasdbTable, tableParallel, batchSize)
 			// 任务完成后释放信号量
 			<-semaphore
 
@@ -101,7 +101,7 @@ func DealSchemasData(mysql, yasdb *sql.DB, mysqlSchemas, yasdbSchemas []string, 
 	return nil
 }
 
-func syncTableDataFromMysqlToYasdb(i int, mysql, yasdb *sql.DB, mysqlSchema, yasdbSchema, mysqlTable, yasdbTable string, tableParallel, batchSize int) {
+func syncTableDataFromMySQLToYasdb(i int, mysql, yasdb *sql.DB, mysqlSchema, yasdbSchema, mysqlTable, yasdbTable string, tableParallel, batchSize int) {
 	// 记录开始时间
 	if i == 100 {
 		fmt.Println(i)
@@ -110,7 +110,7 @@ func syncTableDataFromMysqlToYasdb(i int, mysql, yasdb *sql.DB, mysqlSchema, yas
 	log.Logger.Infof("开始同步mysql表 %s.%s", mysqlSchema, mysqlTable)
 	//处理总行数
 	var totalCount int
-	count, err := getMysqlTableCount(mysql, mysqlSchema, mysqlTable)
+	count, err := getMySQLTableCount(mysql, mysqlSchema, mysqlTable)
 	if err != nil {
 		log.Logger.Errorf("表 %s.%s 同步失败, 获取mysql端表数据失败: %v", mysqlSchema, mysqlTable, err)
 		return
@@ -141,7 +141,7 @@ func syncTableDataFromMysqlToYasdb(i int, mysql, yasdb *sql.DB, mysqlSchema, yas
 		semaphore <- true
 		go func(mysqlSchema, yasdbSchema, mysqlTable, yasdbTable string, yasdbColumns []ColumnInfo, limit, offset int) {
 			defer wg.Done()
-			resultCount := syncTableDataFromMysqlToYasdbParallel(mysql, yasdb, mysqlSchema, yasdbSchema, mysqlTable, yasdbTable, yasdbColumns, limit, offset, batchSize)
+			resultCount := syncTableDataFromMySQLToYasdbParallel(mysql, yasdb, mysqlSchema, yasdbSchema, mysqlTable, yasdbTable, yasdbColumns, limit, offset, batchSize)
 			totalCount = totalCount + resultCount
 			// 任务完成后释放信号量
 			<-semaphore
@@ -164,7 +164,9 @@ func getYasdbColumns(yasdb *sql.DB, yasdbSchema, yasdbTable string) ([]ColumnInf
 	} else {
 		yasdbSchema = strings.ToUpper(yasdbSchema)
 	}
-	// yasdbTable = strings.ToUpper(yasdbTable)
+	if !confdef.GetM2YConfig().Yashan.CaseSensitive {
+		yasdbTable = strings.ToUpper(yasdbTable)
+	}
 	yasdbSql := fmt.Sprintf(sqldef.Y_SQL_QUERY_COLUMN, yasdbSchema, yasdbTable)
 	yasdbRows, err := yasdb.Query(yasdbSql)
 	if err != nil {
@@ -186,7 +188,7 @@ func getYasdbColumns(yasdb *sql.DB, yasdbSchema, yasdbTable string) ([]ColumnInf
 	return yasdbColumns, err
 }
 
-func syncTableDataFromMysqlToYasdbParallel(mysdb, yasdb *sql.DB, mysqlSchema, yasdbSchema, mysqlTable, yasdbTable string, yasdbColumns []ColumnInfo, limit, offset, batchSize int) int {
+func syncTableDataFromMySQLToYasdbParallel(mysdb, yasdb *sql.DB, mysqlSchema, yasdbSchema, mysqlTable, yasdbTable string, yasdbColumns []ColumnInfo, limit, offset, batchSize int) int {
 	var resultCount int
 	var batchCount int
 	// 开始事务
@@ -232,7 +234,7 @@ func syncTableDataFromMysqlToYasdbParallel(mysdb, yasdb *sql.DB, mysqlSchema, ya
 		yashanValues := make([]interface{}, len(values))
 		for i, value := range values {
 			// fmt.Println(columns[i].ColumnType)
-			yashanValues[i] = convertValueFromMysqlToYashan(value, columns[i].ColumnType)
+			yashanValues[i] = convertValueFromMySQLToYashan(value, columns[i].ColumnType)
 		}
 		// 构建YashanDB插入语句
 		yashanInsertSQL := buildYashanInsertSQL(yasdbSchema, yasdbTable, yasdbColumns)
@@ -261,6 +263,11 @@ func syncTableDataFromMysqlToYasdbParallel(mysdb, yasdb *sql.DB, mysqlSchema, ya
 			}
 		}
 	}
+	err = targetTx.Commit()
+	if err != nil {
+		log.Logger.Errorf("表 %s.%s 同步失败, 事务提交失败: %v", mysqlSchema, mysqlTable, err)
+		return resultCount
+	}
 	// 执行最后一批数据的提交操作
 	// if batchCount > 0 {
 	// err = targetTx.Commit()
@@ -272,12 +279,12 @@ func syncTableDataFromMysqlToYasdbParallel(mysdb, yasdb *sql.DB, mysqlSchema, ya
 	return resultCount
 }
 
-func getMysqlTableCount(mysdb *sql.DB, schema, table string, opts ...queryFunc) (count int, err error) {
+func getMySQLTableCount(mysdb *sql.DB, schema, table string, opts ...queryFunc) (count int, err error) {
 	sql := fmt.Sprintf(sqldef.M_SQL_QUERY_TABLE_COUNT, schema, table)
 	for _, opt := range opts {
 		sql = opt(sql)
 	}
-	if querySql := confdef.GetM2YConfig().Mysql.QueryStr; querySql != "" {
+	if querySql := confdef.GetM2YConfig().MySQL.QueryStr; querySql != "" {
 		sql = sql + querySql
 	}
 	err = mysdb.QueryRow(sql).Scan(&count)
@@ -299,7 +306,7 @@ func unWarpQuote(s string) string {
 }
 
 // 将值转换为YashanDB类型
-func convertValueFromMysqlToYashan(value interface{}, columnType string) interface{} {
+func convertValueFromMySQLToYashan(value interface{}, columnType string) interface{} {
 	if value != nil {
 		switch columnType {
 		case "DATETIME", "TIMESTAMP":
@@ -339,10 +346,16 @@ func uint8SliceToInt(slice []uint8) int {
 
 // 构建YashanDB插入语句
 func buildYashanInsertSQL(yasdbSchema, tableName string, columns []ColumnInfo) string {
+	caseSensitive := confdef.GetM2YConfig().Yashan.CaseSensitive
 	var columnNames, placeholders []string
 	for _, column := range columns {
-		columnNames = append(columnNames, fmt.Sprintf("\"%s\"", column.ColumnName))
+		columnName := column.ColumnName
+		if caseSensitive {
+			columnName = fmt.Sprintf("\"%s\"", column.ColumnName)
+		}
+		columnNames = append(columnNames, columnName)
 		placeholders = append(placeholders, "?")
 	}
-	return fmt.Sprintf(sqldef.Y_SQL_INSERT_DATA, yasdbSchema, tableName, strings.Join(columnNames, ","), strings.Join(placeholders, ","))
+	formatter := getSQLFormatter(sqldef.Y_SQL_INSERT_DATA, sqldef.Y_SQL_INSERT_DATA_CASE_SENSITIVE)
+	return fmt.Sprintf(formatter, yasdbSchema, tableName, strings.Join(columnNames, ","), strings.Join(placeholders, ","))
 }

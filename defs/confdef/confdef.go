@@ -15,7 +15,6 @@ var (
 	ErrSchemasAndTablesAllExist   = errors.New("schemas 和 tables 这两个参数不能同时配置, 请检查配置文件")
 	ErrSchemasAndTablesAtLeastOne = errors.New("schemas 和 tables 这两个参数至少需要配置一个, 请检查配置文件")
 	ErrNeedRemapSchemas           = errors.New("需要配置remap_schemas, 指定在崖山要导入的用户, 请检查配置文件")
-	ErrRemapSchema                = errors.New("需要配置remap_schemas, 指定在崖山要导入的用户, 请检查配置文件")
 	ErrSampleLines                = errors.New("需要配置sample_lines, 指定数据校验时单表的随机采样行数, 参数大于等于0, 为0表示全表校验")
 )
 
@@ -30,7 +29,7 @@ var (
 
 var _config M2YConfig
 
-type MysqlConfig struct {
+type MySQLConfig struct {
 	Host              string   `toml:"host"`
 	Port              int      `toml:"port"`
 	Database          string   `toml:"database"`
@@ -49,17 +48,18 @@ type MysqlConfig struct {
 }
 
 type YashanConfig struct {
-	Host         string   `toml:"host"`
-	Port         int      `toml:"port"`
-	Database     string   `toml:"database"`
-	UserName     string   `toml:"username"`
-	Password     string   `toml:"password"`
-	RemapSchemas []string `toml:"remap_schemas"`
+	Host          string   `toml:"host"`
+	Port          int      `toml:"port"`
+	Database      string   `toml:"database"`
+	UserName      string   `toml:"username"`
+	Password      string   `toml:"password"`
+	RemapSchemas  []string `toml:"remap_schemas"`
+	CaseSensitive bool     `toml:"case_sensitive"`
 }
 
 type M2YConfig struct {
 	LogLevel string        `toml:"log_level"`
-	Mysql    *MysqlConfig  `toml:"mysql"`
+	MySQL    *MySQLConfig  `toml:"mysql"`
 	Yashan   *YashanConfig `toml:"yashandb"`
 }
 
@@ -89,10 +89,10 @@ func (c *M2YConfig) validate() error {
 	if len(c.Yashan.RemapSchemas) == 0 {
 		return ErrNeedRemapSchemas
 	}
-	if len(c.Mysql.Schemas) == 0 && len(c.Mysql.Tables) == 0 {
+	if len(c.MySQL.Schemas) == 0 && len(c.MySQL.Tables) == 0 {
 		return ErrSchemasAndTablesAtLeastOne
 	}
-	if len(c.Mysql.Schemas) > 0 && len(c.Mysql.Tables) > 0 {
+	if len(c.MySQL.Schemas) > 0 && len(c.MySQL.Tables) > 0 {
 		return ErrSchemasAndTablesAllExist
 	}
 	return nil

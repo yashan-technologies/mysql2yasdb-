@@ -23,14 +23,14 @@ func (c *M2YSyncDataCmd) Run() error {
 }
 
 func (c *M2YSyncDataCmd) validate() error {
-	if confdef.GetM2YConfig().Yashan.RemapSchemas == nil {
+	if len(confdef.GetM2YConfig().Yashan.RemapSchemas) == 0 {
 		return confdef.ErrNeedRemapSchemas
 	}
 	return nil
 }
 
 func (c *M2YSyncDataCmd) initDB() error {
-	if err := db.LoadMysqlDB(confdef.GetM2YConfig().Mysql); err != nil {
+	if err := db.LoadMySQLDB(confdef.GetM2YConfig().MySQL); err != nil {
 		return err
 	}
 	if err := db.LoadYashanDB(confdef.GetM2YConfig().Yashan); err != nil {
@@ -40,7 +40,7 @@ func (c *M2YSyncDataCmd) initDB() error {
 }
 
 func (c *M2YSyncDataCmd) getSyncArgs() (parallel, tableParallel, batchSize int) {
-	conf := confdef.GetM2YConfig().Mysql
+	conf := confdef.GetM2YConfig().MySQL
 	parallel = getArgs(c.Parallel, conf.Parallel, confdef.DefaultParallel, confdef.MaxParallel)
 	tableParallel = getArgs(c.TableParallel, conf.ParallelPerTable, confdef.DefaultParallelPerTable, confdef.MaxParallel)
 	batchSize = getArgs(c.BatchSize, conf.BatchSize, confdef.DefaultBatchSize, 0)

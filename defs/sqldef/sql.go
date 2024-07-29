@@ -44,24 +44,56 @@ const (
 )
 
 const (
-	Y_SQL_QUERY_TABLE_COUNT               = "SELECT COUNT(*) FROM \"%s\".\"%s\""
-	Y_SQL_QUERY_TABLE_ROW_DATA            = "SELECT * FROM \"%s\".\"%s\" WHERE %s"
-	Y_SQL_SET_DEFINE_OFF                  = "SET DEFINE OFF;\n"
-	Y_SQL_ALTER_COLUMN_NOT_NULL           = "ALTER TABLE \"%s\".\"%s\" modify \"%s\" NOT NULL;\n"
-	Y_SQL_COLUMN_STMT_FORMAT              = "\"%s\" %s%s"
-	Y_SQL_COLUMN_COMMENT_FORMAT           = "COMMENT ON COLUMN \"%s\".\"%s\".\"%s\" IS '%s';\n"
-	Y_SQL_TABLE_COMMENT_FORMAT            = "COMMENT ON TABLE \"%s\".\"%s\" IS '%s' ;\n"
-	Y_SQL_CREATE_SEQUENCE_FORMAT          = "CREATE SEQUENCE \"%s\".\"%s\" START WITH %s INCREMENT BY 1;\n"
-	Y_SQL_CREATE_TABLE                    = "CREATE TABLE \"%s\".\"%s\" (\n\t%s\n);"
-	Y_SQL_SET_COLUMN_DEFAULT_VALUE_FORMAT = "ALTER TABLE \"%s\".\"%s\" MODIFY \"%s\" DEFAULT \"%s\".\"%s\".NEXTVAL;\n"
-	Y_SQL_ADD_PRIMARY_KEY                 = "ALTER TABLE \"%s\".\"%s\" ADD PRIMARY KEY (%s);\n"
-	Y_SQL_CREATE_UNIQUE_INDEX             = "CREATE UNIQUE INDEX \"%s\".\"%s\" ON \"%s\".\"%s\" (%s);\n"
-	Y_SQL_ADD_UNIQUE_CONSTRAINT           = "ALTER TABLE  \"%s\".\"%s\" ADD CONSTRAINT %s UNIQUE (%s);\n"
-	Y_SQL_CREATE_INDEX                    = "CREATE INDEX \"%s\".\"%s\" ON \"%s\".\"%s\" (%s);\n"
-	Y_SQL_ADD_FOREIGN_KEY                 = "ALTER TABLE \"%s\".\"%s\" ADD CONSTRAINT %s FOREIGN KEY (\"%s\") REFERENCES \"%s\".\"%s\"(\"%s\");\n"
-	Y_SQL_CREATE_VIEW                     = "CREATE VIEW \"%s\".\"%s\" AS %s ;\n"
-	Y_SQL_INSERT_DATA                     = "INSERT INTO \"%s\".\"%s\" ( %s ) VALUES (%s)"
-	Y_SQL_QUERY_COLUMN                    = "select DATA_TYPE,COLUMN_NAME from all_tab_columns where owner='%s' and TABLE_NAME='%s' order by COLUMN_ID"
+	Y_SQL_QUERY_TABLE_COUNT                = "SELECT COUNT(*) FROM %s.%s"
+	Y_SQL_QUERY_TABLE_COUNT_CASE_SENSITIVE = "SELECT COUNT(*) FROM \"%s\".\"%s\""
+
+	Y_SQL_QUERY_TABLE_ROW_DATA                = "SELECT * FROM %s.%s WHERE %s"
+	Y_SQL_QUERY_TABLE_ROW_DATA_CASE_SENSITIVE = "SELECT * FROM \"%s\".\"%s\" WHERE %s"
+
+	Y_SQL_QUERY_COLUMN   = "select DATA_TYPE,COLUMN_NAME from all_tab_columns where owner='%s' and TABLE_NAME='%s' order by COLUMN_ID"
+	Y_SQL_SET_DEFINE_OFF = "SET DEFINE OFF;\n"
+
+	Y_SQL_ALTER_COLUMN_NOT_NULL                = "ALTER TABLE %s.%s modify %s NOT NULL;\n"
+	Y_SQL_ALTER_COLUMN_NOT_NULL_CASE_SENSITIVE = "ALTER TABLE \"%s\".\"%s\" modify \"%s\" NOT NULL;\n"
+
+	Y_SQL_COLUMN_STMT_FORMAT                = "%s %s%s"
+	Y_SQL_COLUMN_STMT_FORMAT_CASE_SENSITIVE = "\"%s\" %s%s"
+
+	Y_SQL_COLUMN_COMMENT_FORMAT                = "COMMENT ON COLUMN %s.%s.%s IS '%s';\n"
+	Y_SQL_COLUMN_COMMENT_FORMAT_CASE_SENSITIVE = "COMMENT ON COLUMN \"%s\".\"%s\".\"%s\" IS '%s';\n"
+
+	Y_SQL_TABLE_COMMENT_FORMAT                = "COMMENT ON TABLE %s.%s IS '%s' ;\n"
+	Y_SQL_TABLE_COMMENT_FORMAT_CASE_SENSITIVE = "COMMENT ON TABLE \"%s\".\"%s\" IS '%s' ;\n"
+
+	Y_SQL_CREATE_SEQUENCE_FORMAT                = "CREATE SEQUENCE %s.%s START WITH %s INCREMENT BY 1;\n"
+	Y_SQL_CREATE_SEQUENCE_FORMAT_CASE_SENSITIVE = "CREATE SEQUENCE \"%s\".\"%s\" START WITH %s INCREMENT BY 1;\n"
+
+	Y_SQL_CREATE_TABLE                = "CREATE TABLE %s.%s (\n\t%s\n);"
+	Y_SQL_CREATE_TABLE_CASE_SENSITIVE = "CREATE TABLE \"%s\".\"%s\" (\n\t%s\n);"
+
+	Y_SQL_SET_COLUMN_DEFAULT_VALUE_FORMAT                = "ALTER TABLE %s.%s MODIFY %s DEFAULT %s.%s.NEXTVAL;\n"
+	Y_SQL_SET_COLUMN_DEFAULT_VALUE_FORMAT_CASE_SENSITIVE = "ALTER TABLE \"%s\".\"%s\" MODIFY \"%s\" DEFAULT \"%s\".\"%s\".NEXTVAL;\n"
+
+	Y_SQL_ADD_PRIMARY_KEY                = "ALTER TABLE %s.%s ADD PRIMARY KEY (%s);\n"
+	Y_SQL_ADD_PRIMARY_KEY_CASE_SENSITIVE = "ALTER TABLE \"%s\".\"%s\" ADD PRIMARY KEY (%s);\n"
+
+	Y_SQL_CREATE_UNIQUE_INDEX                = "CREATE UNIQUE INDEX %s.%s ON %s.%s (%s);\n"
+	Y_SQL_CREATE_UNIQUE_INDEX_CASE_SENSITIVE = "CREATE UNIQUE INDEX \"%s\".\"%s\" ON \"%s\".\"%s\" (%s);\n"
+
+	Y_SQL_ADD_UNIQUE_CONSTRAINT                = "ALTER TABLE %s.%s ADD CONSTRAINT %s UNIQUE (%s);\n"
+	Y_SQL_ADD_UNIQUE_CONSTRAINT_CASE_SENSITIVE = "ALTER TABLE \"%s\".\"%s\" ADD CONSTRAINT %s UNIQUE (%s);\n"
+
+	Y_SQL_CREATE_INDEX                = "CREATE INDEX %s.%s ON %s.%s (%s);\n"
+	Y_SQL_CREATE_INDEX_CASE_SENSITIVE = "CREATE INDEX \"%s\".\"%s\" ON \"%s\".\"%s\" (%s);\n"
+
+	Y_SQL_ADD_FOREIGN_KEY                = "ALTER TABLE %s.%s ADD CONSTRAINT %s FOREIGN KEY (%s) REFERENCES %s.%s(%s);\n"
+	Y_SQL_ADD_FOREIGN_KEY_CASE_SENSITIVE = "ALTER TABLE \"%s\".\"%s\" ADD CONSTRAINT %s FOREIGN KEY (\"%s\") REFERENCES \"%s\".\"%s\"(\"%s\");\n"
+
+	Y_SQL_CREATE_VIEW                = "CREATE VIEW %s.%s AS %s ;\n"
+	Y_SQL_CREATE_VIEW_CASE_SENSITIVE = "CREATE VIEW \"%s\".\"%s\" AS %s ;\n"
+
+	Y_SQL_INSERT_DATA                = "INSERT INTO %s.%s ( %s ) VALUES (%s)"
+	Y_SQL_INSERT_DATA_CASE_SENSITIVE = "INSERT INTO \"%s\".\"%s\" ( %s ) VALUES (%s)"
 )
 
 const (

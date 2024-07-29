@@ -23,14 +23,14 @@ func (c *M2YCheckDataCmd) Run() error {
 
 func (c *M2YCheckDataCmd) validate() error {
 	config := confdef.GetM2YConfig()
-	if config.Mysql.SampleLines < 0 {
+	if config.MySQL.SampleLines < 0 {
 		return confdef.ErrSampleLines
 	}
 	return nil
 }
 
 func (c *M2YCheckDataCmd) initDB() error {
-	if err := db.LoadMysqlDB(confdef.GetM2YConfig().Mysql); err != nil {
+	if err := db.LoadMySQLDB(confdef.GetM2YConfig().MySQL); err != nil {
 		return err
 	}
 	if err := db.LoadYashanDB(confdef.GetM2YConfig().Yashan); err != nil {
@@ -40,7 +40,7 @@ func (c *M2YCheckDataCmd) initDB() error {
 }
 
 func (c *M2YCheckDataCmd) getCheckArgs() (parallel, sampleLine int) {
-	parallel = getArgs(c.Parallel, confdef.GetM2YConfig().Mysql.Parallel, confdef.DefaultParallel, confdef.MaxParallel)
-	sampleLine = getArgs(c.SampleLine, confdef.GetM2YConfig().Mysql.SampleLines, confdef.DefaultSampleLine, 0)
+	parallel = getArgs(c.Parallel, confdef.GetM2YConfig().MySQL.Parallel, confdef.DefaultParallel, confdef.MaxParallel)
+	sampleLine = getArgs(c.SampleLine, confdef.GetM2YConfig().MySQL.SampleLines, confdef.DefaultSampleLine, 0)
 	return
 }

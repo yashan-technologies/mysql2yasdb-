@@ -23,7 +23,7 @@ func (c *M2YExportDDLsCmd) validate() error {
 }
 
 func (c *M2YExportDDLsCmd) initDB() error {
-	if err := db.LoadMysqlDB(confdef.GetM2YConfig().Mysql); err != nil {
+	if err := db.LoadMySQLDB(confdef.GetM2YConfig().MySQL); err != nil {
 		return err
 	}
 	return nil

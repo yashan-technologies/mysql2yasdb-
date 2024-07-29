@@ -22,12 +22,12 @@ const (
 )
 
 var (
-	MysqlDB      *sql.DB
+	MySQLDB      *sql.DB
 	YashanDB     *sql.DB
-	MysqlVersion string
+	MySQLVersion string
 )
 
-func LoadMysqlDB(mysql *confdef.MysqlConfig) (err error) {
+func LoadMySQLDB(mysql *confdef.MySQLConfig) (err error) {
 	mysqlDsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s", mysql.UserName, mysql.Password, mysql.Host, mysql.Port, mysql.Database)
 	mysqlDB, err := sql.Open(driver_mysql, mysqlDsn)
 	if err != nil {
@@ -38,7 +38,7 @@ func LoadMysqlDB(mysql *confdef.MysqlConfig) (err error) {
 		err = fmt.Errorf("连接mysql时出错: %s", err.Error())
 		return
 	}
-	MysqlDB = mysqlDB
+	MySQLDB = mysqlDB
 	err = queryVersion()
 	return
 }
@@ -62,12 +62,12 @@ func LoadYashanDB(yashan *confdef.YashanConfig) (err error) {
 
 func queryVersion() (err error) {
 	var version string
-	err = MysqlDB.QueryRow("SELECT VERSION()").Scan(&version)
+	err = MySQLDB.QueryRow("SELECT VERSION()").Scan(&version)
 	if err != nil {
 		err = fmt.Errorf("查询 MySQL 版本失败: %s", err.Error())
 		return
 	}
-	MysqlVersion = version[0:1]
+	MySQLVersion = version[0:1]
 	return
 }
 

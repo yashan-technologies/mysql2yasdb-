@@ -1,6 +1,6 @@
 log_level = "debug"
 [mysql]
-host="192.168.8.236"
+host="127.0.0.1"
 port=3306
 database="yashan"
 username="root"
@@ -17,8 +17,9 @@ sample_lines=1000
 #no_check_null_string=true
 
 [yashandb]
-host="192.168.8.246"
+host="127.0.0.1"
 port=1688
 username="sys"
 password="yasdb_123"
 remap_schemas=["SYS"]
+case_sensitive = false # 是否大小写敏感，默认不敏感（全大写）

@@ -109,7 +109,7 @@ var (
 	}
 )
 
-func MysqlToYasType(t string) (yas string, err error) {
+func MySQLToYasType(t string) (yas string, err error) {
 	yas, ok := _DataTypeMap[t]
 	if !ok {
 		err = errdef.NewTransUnSupportTypeErr(t)
