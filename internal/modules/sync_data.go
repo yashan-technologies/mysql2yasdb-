@@ -161,7 +161,7 @@ func getYasdbColumns(yasdb *sql.DB, yasdbSchema, yasdbTable string) ([]ColumnInf
 	// 处理用户是小写的情况 (create user "test" itentified bu xxx)
 	if isWarpByQuote(yasdbSchema) {
 		yasdbSchema = unWarpQuote(yasdbSchema)
-	} else {
+	} else if !confdef.GetM2YConfig().Yashan.CaseSensitive {
 		yasdbSchema = strings.ToUpper(yasdbSchema)
 	}
 	if !confdef.GetM2YConfig().Yashan.CaseSensitive {
