@@ -83,14 +83,13 @@ password="yashan123"                        #mysql访问用户密码
 
 #tables=["table1","table2"]                 #需迁移的mysql表名称，和参数schemas不能同时配置
 schemas=["db1","db2","db3"]                 #需迁移的databases的名称，和参数tables不能同时配置
-#exclude_tables=table3,table4               #迁移过程中需排除的表名称，schemas配置多个时，多个schemas下面的此名称的表都不导出/数据同步
+#exclude_tables=["table3","table4"]               #迁移过程中需排除的表名称，schemas配置多个时，多个schemas下面的此名称的表都不导出/数据同步
 #parallel=1                                 #并发度，值为N时表示同时并发迁移N个表，表较多时建议加大此参数可以提升速度,默认值1，取值范围[1-8]
 #parallel_per_table=1                       #表内并行度，值为N时表示同一张表开启N个并行同步数据，表较大时建议加大此参数可以提升,默认值1，取值范围[1-8]
 #batchSize=1000                             #批次大小，值为N时表示一次事务处理N行数据，默认值1000
 #query="where create_date < '2022-01-11 00:00:00'"  #设置查询条件,会对所有要同步的表都加上此条件
 sample_lines=1000                           #校验行数
 #rows_only=true                             #是否只校验总行数
-#no_check_null_string=true                  #是否不校验空字符串
 
 [yashandb]
 host="127.0.0.1"                        #YahsanDB主机IP地址
@@ -98,6 +97,7 @@ port=1688                                   #YashanDB访问端口
 username="yashan"                           #YashanDB访问用户名，按表导入时，导入到此用户下
 password="yashan123"                        #YashanDB访问用户密码，建议密码串用双引号引起来，避免复杂密码识别有误
 remap_schemas=["yashan","yashan","yashan"]  #迁移至YashanDB的目标用户名称，当和参数schemas一起配置时，它的值需要和参数schemas的值一一对应，schemas第N个值对应到remap_schemas第N个值。当和tables一起配置时，只取remap_schemas的第一个值，也可用于数据校验
+# additional_keywords = [] # 额外关键字，YashanDB关键字识别有问题时可以补充
 ```
 
 ### 5、最佳实践

@@ -353,9 +353,9 @@ func buildYashanInsertSQL(yasdbSchema, tableName string, columns []ColumnInfo) s
 		if caseSensitive {
 			columnName = fmt.Sprintf("\"%s\"", column.ColumnName)
 		}
-		columnNames = append(columnNames, columnName)
+		columnNames = append(columnNames, formatKeyWord(columnName))
 		placeholders = append(placeholders, "?")
 	}
 	formatter := getSQLFormatter(sqldef.Y_SQL_INSERT_DATA, sqldef.Y_SQL_INSERT_DATA_CASE_SENSITIVE)
-	return fmt.Sprintf(formatter, yasdbSchema, tableName, strings.Join(columnNames, ","), strings.Join(placeholders, ","))
+	return fmt.Sprintf(formatter, formatKeyWord(yasdbSchema), formatKeyWord(tableName), strings.Join(columnNames, ","), strings.Join(placeholders, ","))
 }
