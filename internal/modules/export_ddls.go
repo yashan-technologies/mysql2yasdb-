@@ -280,12 +280,12 @@ func getTableColumnDDLs(mysql *sql.DB, mysqlSchema, yasdbSchema, tableName strin
 		if isNullable == "NO" {
 			// nullableStr = " not null"
 			formatter := getSQLFormatter(sqldef.Y_SQL_ALTER_COLUMN_NOT_NULL, sqldef.Y_SQL_ALTER_COLUMN_NOT_NULL_CASE_SENSITIVE)
-			nullableStr = fmt.Sprintf(formatter, yasdbSchema, tableName, columnName)
+			nullableStr = fmt.Sprintf(formatter, formatKeyWord(yasdbSchema), formatKeyWord(tableName), formatKeyWord(columnName))
 			nullableStrs = append(nullableStrs, nullableStr)
 		}
 		// 构建列语句
 		formatter := getSQLFormatter(sqldef.Y_SQL_COLUMN_STMT_FORMAT, sqldef.Y_SQL_COLUMN_STMT_FORMAT_CASE_SENSITIVE)
-		columnStmt := fmt.Sprintf(formatter, columnName, yasType, columnDefaultStr)
+		columnStmt := fmt.Sprintf(formatter, formatKeyWord(columnName), yasType, columnDefaultStr)
 		// 将列信息添加到对应的表
 		tableColumns[tableName] = append(tableColumns[tableName], columnStmt)
 		columnComment = strings.Replace(columnComment, "'", "''", -1)
@@ -295,14 +295,14 @@ func getTableColumnDDLs(mysql *sql.DB, mysqlSchema, yasdbSchema, tableName strin
 	// 构建建表语句
 	for tableName, columns := range tableColumns {
 		formatter := getSQLFormatter(sqldef.Y_SQL_CREATE_TABLE, sqldef.Y_SQL_CREATE_TABLE_CASE_SENSITIVE)
-		createTableStmt := fmt.Sprintf(formatter, yasdbSchema, tableName, strings.Join(columns, ",\n\t"))
+		createTableStmt := fmt.Sprintf(formatter, formatKeyWord(yasdbSchema), formatKeyWord(tableName), strings.Join(columns, ",\n\t"))
 		tableDDL := fmt.Sprintln(createTableStmt)
 		tableDDLs = append(tableDDLs, tableDDL)
 	}
 	for column, comment := range columnComments {
 		if comment != "" {
 			formatter := getSQLFormatter(sqldef.Y_SQL_COLUMN_COMMENT_FORMAT, sqldef.Y_SQL_COLUMN_COMMENT_FORMAT_CASE_SENSITIVE)
-			commentDDL := fmt.Sprintf(formatter, yasdbSchema, tableName, column, comment)
+			commentDDL := fmt.Sprintf(formatter, formatKeyWord(yasdbSchema), formatKeyWord(tableName), formatKeyWord(column), comment)
 			tableDDLs = append(tableDDLs, commentDDL)
 		}
 	}
@@ -359,10 +359,11 @@ func getTableAutoIncrementDDLs(mysql *sql.DB, mysqlSchema, yasdbSchema, tableNam
 
 		// 生成创建 YashanDB Sequence 的语句
 		formatter := getSQLFormatter(sqldef.Y_SQL_CREATE_SEQUENCE_FORMAT, sqldef.Y_SQL_CREATE_SEQUENCE_FORMAT_CASE_SENSITIVE)
-		createSequenceSQL := fmt.Sprintf(formatter, yasdbSchema, sequenceName, maxidvalue)
+		createSequenceSQL := fmt.Sprintf(formatter, formatKeyWord(yasdbSchema), formatKeyWord(sequenceName), maxidvalue)
 		// 生成设置列默认值的语句
 		formatter = getSQLFormatter(sqldef.Y_SQL_SET_COLUMN_DEFAULT_VALUE_FORMAT, sqldef.Y_SQL_SET_COLUMN_DEFAULT_VALUE_FORMAT_CASE_SENSITIVE)
-		setDefaultValueSQL := fmt.Sprintf(formatter, yasdbSchema, tableName, autoIncrementColumn, yasdbSchema, sequenceName)
+		setDefaultValueSQL := fmt.Sprintf(formatter, formatKeyWord(yasdbSchema), formatKeyWord(tableName),
+			formatKeyWord(autoIncrementColumn), formatKeyWord(yasdbSchema), formatKeyWord(sequenceName))
 		ddls = append(ddls, createSequenceSQL)
 		ddls = append(ddls, setDefaultValueSQL)
 	}
@@ -385,7 +386,7 @@ func getTableComments(db *sql.DB, tableSchema, yasdbSchema, tableName string) ([
 		}
 		if tableComment.String != "" {
 			formatter := getSQLFormatter(sqldef.Y_SQL_TABLE_COMMENT_FORMAT, sqldef.Y_SQL_TABLE_COMMENT_FORMAT_CASE_SENSITIVE)
-			tablecomment := fmt.Sprintf(formatter, yasdbSchema, tableName, tableComment.String)
+			tablecomment := fmt.Sprintf(formatter, formatKeyWord(yasdbSchema), formatKeyWord(tableName), tableComment.String)
 			tablecomments = append(tablecomments, tablecomment)
 		}
 	}
@@ -435,7 +436,7 @@ func getPrimaryKeyDDLs(mysql *sql.DB, mysqlSchema, yasdbSchema, tableName string
 	// 生成创建索引的语句
 	for _, columns := range indexMap {
 		formatter := getSQLFormatter(sqldef.Y_SQL_ADD_PRIMARY_KEY, sqldef.Y_SQL_ADD_PRIMARY_KEY_CASE_SENSITIVE)
-		primarykey := fmt.Sprintf(formatter, yasdbSchema, tableName, genColumnString(columns))
+		primarykey := fmt.Sprintf(formatter, formatKeyWord(yasdbSchema), formatKeyWord(tableName), genColumnString(columns))
 		primarykeys = append(primarykeys, primarykey)
 	}
 	return primarykeys, nil
@@ -464,10 +465,11 @@ func getUniqueIndexDDLs(mysql *sql.DB, mysqlSchema, yasdbSchema, tableName strin
 			indexName = indexName[0:64]
 		}
 		formatter := getSQLFormatter(sqldef.Y_SQL_CREATE_UNIQUE_INDEX, sqldef.Y_SQL_CREATE_UNIQUE_INDEX_CASE_SENSITIVE)
-		ddls = append(ddls, fmt.Sprintf(formatter, yasdbSchema, indexName, yasdbSchema, tableName, columnString))
+		ddls = append(ddls, fmt.Sprintf(formatter, formatKeyWord(yasdbSchema),
+			formatKeyWord(indexName), formatKeyWord(yasdbSchema), formatKeyWord(tableName), columnString))
 
 		formatter = getSQLFormatter(sqldef.Y_SQL_ADD_UNIQUE_CONSTRAINT, sqldef.Y_SQL_ADD_UNIQUE_CONSTRAINT_CASE_SENSITIVE)
-		ddls = append(ddls, fmt.Sprintf(formatter, yasdbSchema, tableName, indexName, columnString))
+		ddls = append(ddls, fmt.Sprintf(formatter, formatKeyWord(yasdbSchema), formatKeyWord(tableName), indexName, columnString))
 	}
 	return ddls, nil
 }
@@ -495,7 +497,8 @@ func getNonUniqueIndexDDL(mysql *sql.DB, mysqlSchema, yasdbSchema, tableName str
 			indexName = indexName[0:64]
 		}
 		formatter := getSQLFormatter(sqldef.Y_SQL_CREATE_INDEX, sqldef.Y_SQL_CREATE_INDEX_CASE_SENSITIVE)
-		ddls = append(ddls, fmt.Sprintf(formatter, yasdbSchema, indexName, yasdbSchema, tableName, columnString))
+		ddls = append(ddls, fmt.Sprintf(formatter, formatKeyWord(yasdbSchema), formatKeyWord(indexName),
+			formatKeyWord(yasdbSchema), formatKeyWord(tableName), columnString))
 	}
 	return ddls, nil
 }
@@ -517,13 +520,13 @@ func getTableForeignKeys(db *sql.DB, mysqlSchema, yasdbSchema, tableName string)
 		formatter := getSQLFormatter(sqldef.Y_SQL_ADD_FOREIGN_KEY, sqldef.Y_SQL_ADD_FOREIGN_KEY_CASE_SENSITIVE)
 		constraint := fmt.Sprintf(
 			formatter,
-			yasdbSchema,
-			tableName,
-			constraintName.String,
-			columnName.String,
-			yasdbSchema,
-			referencedTableName.String,
-			referencedColumnName.String,
+			formatKeyWord(yasdbSchema),
+			formatKeyWord(tableName),
+			formatKeyWord(constraintName.String),
+			formatKeyWord(columnName.String),
+			formatKeyWord(yasdbSchema),
+			formatKeyWord(referencedTableName.String),
+			formatKeyWord(referencedColumnName.String),
 		)
 		constraints = append(constraints, constraint)
 	}
@@ -553,14 +556,14 @@ func getViewDDLs(db *sql.DB, mysqlSchema, yasdbSchema string) ([]string, error) 
 			// 反引号换成引号
 			viewDDL = strings.ReplaceAll(viewDDL, "`", "\"")
 		} else {
-			// 去掉反引号
-			viewDDL = strings.ReplaceAll(viewDDL, "`", "")
+			// 转成全大写，反引号换成引号
+			viewDDL = strings.ReplaceAll(strings.ToUpper(viewDDL), "`", "\"")
 		}
 		if len(strings.TrimSpace(viewDDL)) == 0 {
 			continue
 		}
 		formatter := getSQLFormatter(sqldef.Y_SQL_CREATE_VIEW, sqldef.Y_SQL_CREATE_VIEW_CASE_SENSITIVE)
-		viewDDL = fmt.Sprintf(formatter, yasdbSchema, viewName, viewDDL)
+		viewDDL = fmt.Sprintf(formatter, formatKeyWord(yasdbSchema), formatKeyWord(viewName), viewDDL)
 		viewDDLs = append(viewDDLs, viewDDL)
 	}
 	return viewDDLs, nil
@@ -574,7 +577,7 @@ func genColumnString(columns []string) string {
 		if caseSensitive {
 			newColumn = fmt.Sprintf("\"%s\"", column)
 		}
-		newColumns = append(newColumns, newColumn)
+		newColumns = append(newColumns, formatKeyWord(newColumn))
 	}
 	return strings.Join(newColumns, ", ")
 }
@@ -749,4 +752,17 @@ func getSQLFormatter(caseInsensitive, caseSensitive string) string {
 		return caseSensitive
 	}
 	return caseInsensitive
+}
+
+func formatKeyWord(s string) string {
+	// 大小写敏感，生成SQL会对字段加引号，直接返回
+	if confdef.GetM2YConfig().Yashan.CaseSensitive {
+		return s
+	}
+	// 大小写不敏感，如果是关键字，则转换成大写并加上引号
+	if confdef.IsKeyword(s) {
+		return fmt.Sprintf("\"%s\"", strings.ToUpper(s))
+	}
+	// 不是关键字直接返回
+	return s
 }

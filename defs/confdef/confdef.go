@@ -30,31 +30,31 @@ var (
 var _config M2YConfig
 
 type MySQLConfig struct {
+	Host             string   `toml:"host"`
+	Port             int      `toml:"port"`
+	Database         string   `toml:"database"`
+	UserName         string   `toml:"username"`
+	Password         string   `toml:"password"`
+	Schemas          []string `toml:"schemas"`
+	Tables           []string `toml:"tables"`
+	ExcludeTables    []string `toml:"exclude_tables"`
+	QueryStr         string   `toml:"query_str"`
+	Parallel         int      `toml:"parallel"           default:"1"`
+	ParallelPerTable int      `toml:"parallel_per_table" default:"1"`
+	BatchSize        int      `toml:"batch_size"         default:"1000"`
+	SampleLines      int      `toml:"sample_lines"       default:"1000"`
+	RowsOnly         bool     `toml:"rows_only"`
+}
+
+type YashanConfig struct {
 	Host              string   `toml:"host"`
 	Port              int      `toml:"port"`
 	Database          string   `toml:"database"`
 	UserName          string   `toml:"username"`
 	Password          string   `toml:"password"`
-	Schemas           []string `toml:"schemas"`
-	Tables            []string `toml:"tables"`
-	ExcludeTables     []string `toml:"exclude_tables"`
-	QueryStr          string   `toml:"query_str"`
-	Parallel          int      `toml:"parallel"              default:"1"`
-	ParallelPerTable  int      `toml:"parallel_per_table"    default:"1"`
-	BatchSize         int      `toml:"batch_size"            default:"1000"`
-	SampleLines       int      `toml:"sample_lines"          default:"1000"`
-	RowsOnly          bool     `toml:"rows_only"`
-	NoCheckNullString bool     `toml:"no_check_null_string"`
-}
-
-type YashanConfig struct {
-	Host          string   `toml:"host"`
-	Port          int      `toml:"port"`
-	Database      string   `toml:"database"`
-	UserName      string   `toml:"username"`
-	Password      string   `toml:"password"`
-	RemapSchemas  []string `toml:"remap_schemas"`
-	CaseSensitive bool     `toml:"case_sensitive"`
+	RemapSchemas      []string `toml:"remap_schemas"`
+	CaseSensitive     bool     `toml:"case_sensitive"`
+	AddtionalKeywords []string `toml:"additional_keywords"`
 }
 
 type M2YConfig struct {
@@ -64,25 +64,26 @@ type M2YConfig struct {
 }
 
 func InitM2YConfig(config string) error {
-	conf := &M2YConfig{}
+	conf := M2YConfig{}
 	if !path.IsAbs(config) {
 		config = path.Join(runtimedef.GetM2YHome(), config)
 	}
 	if !fs.IsFileExist(config) {
 		return &errdef.ErrFileNotFound{FName: config}
 	}
-	if _, err := toml.DecodeFile(config, conf); err != nil {
+	if _, err := toml.DecodeFile(config, &conf); err != nil {
 		return err
 	}
 	if err := conf.validate(); err != nil {
 		return err
 	}
-	_config = *conf
+	_config = conf
+	initKeywords(_config)
 	return nil
 }
 
-func GetM2YConfig() *M2YConfig {
-	return &_config
+func GetM2YConfig() M2YConfig {
+	return _config
 }
 
 func (c *M2YConfig) validate() error {

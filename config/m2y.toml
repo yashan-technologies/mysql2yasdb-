@@ -1,25 +1,51 @@
 log_level = "debug"
+
 [mysql]
-host="127.0.0.1"
-port=3306
-database="yashan"
-username="root"
-password="123456"
-#tables=["test_key_word"]
-schemas=["yashan"]
-exclude_tables=["data"]
-#parallel=1
-#parallel_per_table=1
-#batch_size=1000
-#query="where create_date < '2022-01-11 00:00:00'"
-sample_lines=1000
-#rows_only=true
-#no_check_null_string=true
+host = "127.0.0.1"
+port = 3306
+database = "yashan"
+username = "root"
+password = "123456"
+
+# MySQL的Database
+schemas = ["yashan"]
+
+# 指定迁移的表名称
+# tables=["test_key_word"]
+
+# 迁移时不包含的表
+# exclude_tables=["data"] 
+
+# 并发度，值为N时表示同时并发迁移N个表，表较多时建议加大此参数可以提升速度,默认值1，取值范围[1-8]
+# parallel=1
+
+# 表内并行度，值为N时表示同一张表开启N个并行同步数据，表较大时建议加大此参数可以提升,默认值1，取值范围[1-8]
+# parallel_per_table=1
+
+# 批次大小，值为N时表示一次事务处理N行数据，默认值1000
+# batch_size=1000 #批次大小，值为N时表示一次事务处理N行数据，默认值1000
+
+# 用于过滤迁移数据的条件，所有表都会加上该条件
+# query="where create_date < '2022-01-11 00:00:00'" 
+
+# 校验数据时，是否只校验总行数
+rows_only = false
+
+# 校验数据时，抽查的样本行数
+sample_lines = 1000
+
 
 [yashandb]
-host="127.0.0.1"
-port=1688
-username="sys"
-password="yasdb_123"
-remap_schemas=["SYS"]
-case_sensitive = false # 是否大小写敏感，默认不敏感（全大写）
+host = "127.0.0.1"
+port = 1688
+username = "sys"
+password = "yasdb_123"
+
+# 在YashanDB中的Schema名称，如果开启大小写敏感则按照实际的大小写填写
+remap_schemas = ["SYS"]
+
+# Schema名称、表名称、字段名称是否大小写敏感，默认不敏感，即全大写形式
+case_sensitive = false
+
+# 额外关键字，YashanDB关键字识别有问题时可以补充
+# additional_keywords = []
