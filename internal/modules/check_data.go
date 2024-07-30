@@ -79,7 +79,7 @@ func compareTableCount(mysqlDB, yashanDB *sql.DB, mysqlSchema, yasdbSchema, tabl
 
 	// 查询 yasdb 表总行数
 	formatter := getSQLFormatter(sqldef.Y_SQL_QUERY_TABLE_COUNT, sqldef.Y_SQL_QUERY_TABLE_COUNT_CASE_SENSITIVE)
-	yasdbQuery := fmt.Sprintf(formatter, yasdbSchema, tableName)
+	yasdbQuery := fmt.Sprintf(formatter, formatKeyWord(yasdbSchema), formatKeyWord(tableName))
 	yasdbRows, err := yashanDB.Query(yasdbQuery)
 	if err != nil {
 		return nil, err
@@ -308,6 +308,8 @@ func getYasdbTableRowByPK(db *sql.DB, tableSchema, tableName string, pkColumnNam
 	for i, columnName := range pkColumnName {
 		if caseSensitive {
 			arr = append(arr, fmt.Sprintf("\"%s\" = :%d", columnName, i+1))
+		} else if confdef.IsKeyword(columnName) {
+			arr = append(arr, fmt.Sprintf("\"%s\" = :%d", strings.ToUpper(columnName), i+1))
 		} else {
 			arr = append(arr, fmt.Sprintf("%s = :%d", columnName, i+1))
 		}
@@ -315,7 +317,7 @@ func getYasdbTableRowByPK(db *sql.DB, tableSchema, tableName string, pkColumnNam
 	}
 
 	formatter := getSQLFormatter(sqldef.Y_SQL_QUERY_TABLE_ROW_DATA, sqldef.Y_SQL_QUERY_TABLE_ROW_DATA_CASE_SENSITIVE)
-	rows, err := db.Query(fmt.Sprintf(formatter, tableSchema, tableName, strings.Join(arr, " AND ")), pkValues...)
+	rows, err := db.Query(fmt.Sprintf(formatter, formatKeyWord(tableSchema), formatKeyWord(tableName), strings.Join(arr, " AND ")), pkValues...)
 	if err != nil {
 		return tableData{}, err
 	}
