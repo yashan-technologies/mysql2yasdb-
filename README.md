@@ -22,6 +22,7 @@
 ```shell
 export MYSQL2YASDB_HOME=/xx/yy/mysql2yasdb  ----工具包mysql2yasdb-xxxx-linux-x86_64.tar.gz解压后的根目录mysql2yasdb-xxxx，根据部署环境提供真实路径
 export PATH=$PATH:$MYSQL2YASDB_HOME
+# 如果已经配置好YashanDB的环境变量，可以跳过设置LD_LIBRARY_PATH
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$MYSQL2YASDB_HOME/lib ${MYSQL2YASDB_HOME}为工具包解压后的根目录
 ```
 
