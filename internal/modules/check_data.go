@@ -373,6 +373,11 @@ func isDataEqual(v1, v2 any) bool {
 		case nil:
 			return true
 		}
+	case time.Time:
+		switch value2 := v2.(type) {
+		case time.Time:
+			return value1.Equal(value2)
+		}
 	}
 	return fmt.Sprint(v1) == fmt.Sprint(v2)
 }
@@ -422,9 +427,17 @@ func convertToMySQLType(value interface{}, columnType string) interface{} {
 			cstLocation, _ := time.LoadLocation("Asia/Shanghai")
 			return t.In(cstLocation)
 		case "YEAR":
-			t, _ := time.Parse("2006", string(value.([]uint8)))
-			cstLocation, _ := time.LoadLocation("Asia/Shanghai")
-			return t.In(cstLocation)
+			var v string
+			switch val := value.(type) {
+			case []uint8:
+				v = string(value.([]uint8))
+			case uint, uint8, uint16, uint32, uint64, int, int8, int16, int32, int64:
+				return val
+			default:
+				v = fmt.Sprint(value)
+			}
+			year, _ := strconv.ParseInt(v, 10, 64)
+			return year
 		case "TIME":
 			t, _ := time.Parse("2006-01-02 15:04:05", "1970-01-01 "+string(value.([]uint8)))
 			cstLocation, _ := time.LoadLocation("Asia/Shanghai")

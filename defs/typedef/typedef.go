@@ -82,7 +82,7 @@ var (
 		M_DATETIME:           Y_TIMESTAMP,
 		M_TIMESTAMP:          Y_TIMESTAMP,
 		M_TIME:               Y_TIME,
-		M_YEAR:               Y_DATE,
+		M_YEAR:               Y_SMALLINT,
 		M_CHAR:               Y_CHAR,
 		M_VARCHAR:            Y_VARCHAR,
 		M_NCHAR:              Y_NCHAR,
