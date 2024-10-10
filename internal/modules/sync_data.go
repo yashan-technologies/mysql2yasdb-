@@ -3,6 +3,7 @@ package modules
 import (
 	"database/sql"
 	"fmt"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -318,9 +319,17 @@ func convertValueFromMySQLToYashan(value interface{}, columnType string) interfa
 			cstLocation, _ := time.LoadLocation("Asia/Shanghai")
 			return t.In(cstLocation)
 		case "YEAR":
-			t, _ := time.Parse("2006", string(value.([]uint8)))
-			cstLocation, _ := time.LoadLocation("Asia/Shanghai")
-			return t.In(cstLocation)
+			var v string
+			switch val := value.(type) {
+			case []uint8:
+				v = string(value.([]uint8))
+			case uint, uint8, uint16, uint32, uint64, int, int8, int16, int32, int64:
+				return val
+			default:
+				v = fmt.Sprint(value)
+			}
+			year, _ := strconv.ParseInt(v, 10, 64)
+			return year
 		case "JSON", "BLOB", "VARBINARY", "BINARY", "MEDIUMBLOB", "LONGBLOB":
 			return value
 		case "BIT":
